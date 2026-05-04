@@ -32,6 +32,7 @@
 #include "gov\nist\microanalysis\EPQTests\MonteCarloSSTest.cuh"
 
 #include "gov\nist\nanoscalemetrology\JMONSELTests\LinesOnLayers.cuh"
+#include "gov\nist\nanoscalemetrology\JMONSELTests\BulkYield.cuh"
 
 #include "ImageUtil.h"
 
@@ -68,6 +69,7 @@ int main()
    RUN("MonteCarloSSTest", MonteCarloSSTest::testOne())
    RUN("SumShapeTest", SumShapeTest::testGetFirstIntersection())
    RUN("LinesOnLayers", LinesOnLayers::run())
+   RUN("BulkYield", BulkYield::run())
 
    return 0;
 }
