@@ -44,7 +44,7 @@ namespace NISTMottScatteringAngle
    void NISTMottScatteringAngle::loadData(int an)
    {
       std::string name(an < 10 ? ".\\gov\\nist\\microanalysis\\EPQLibrary\\NistXSec/E0" + std::to_string(an) + ".D64" : ".\\gov\\nist\\microanalysis\\EPQLibrary\\NistXSec/E" + std::to_string(an) + ".D64");
-      printf("Reading: %s\n", name.c_str());
+      printf("Reading: %s\n", name.c_str()); fflush(stdout);
       try {
          std::ifstream t(name);
          if (!t.good()) throw 0;

@@ -3,6 +3,7 @@
 #include "gov\nist\nanoscalemetrology\JMONSELutils\NULagrangeInterpolation.cuh"
 
 #include <fstream>
+#include <stdexcept>
 
 namespace NUTableInterpolation
 {
@@ -54,7 +55,12 @@ namespace NUTableInterpolation
    */
    MatrixXd NUTableInterpolation::getDomain() const
    {
-      // Return a deep copy
+      if (dim == 0) {
+         MatrixXd defaultDomain(1, VectorXd(2));
+         defaultDomain[0][0] = 0.0;
+         defaultDomain[0][1] = INFINITY;
+         return defaultDomain;
+      }
       MatrixXd domainCopy(dim, VectorXd(2));
       for (int i = 0; i < dim; i++)
          for (int j = 0; j < 2; j++)
@@ -110,7 +116,9 @@ namespace NUTableInterpolation
       case 4:
          return NULagrangeInterpolation::d4(table4d, x, order, xval, xvallen)[0];
       default:
-         printf("NUTableInterpolation::interpolate: Table dimensions must be 1<=dim<=4");
+         if (dim != 0)
+            printf("NUTableInterpolation::interpolate: Table dimensions must be 1<=dim<=4");
+         return 0.0;
       }
    }
 
@@ -118,7 +126,7 @@ namespace NUTableInterpolation
    {
       try {
          std::fstream myfile(tableFileName, std::ios_base::in);
-         if (!myfile.good()) throw 0;
+         if (!myfile.good()) throw std::runtime_error(std::string("File not found: ") + tableFileName);
 
          int a;
          while (myfile >> a) {

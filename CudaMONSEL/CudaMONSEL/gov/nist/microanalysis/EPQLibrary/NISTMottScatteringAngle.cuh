@@ -50,7 +50,7 @@ namespace NISTMottScatteringAngle
       void initializeDefaultStrategy() override;
    };
 
-   const NISTMottScatteringAngle* mScatter[];
+   extern const NISTMottScatteringAngle* mScatter[];
 
    extern const RandomizedScatterFactoryT& Factory;
 

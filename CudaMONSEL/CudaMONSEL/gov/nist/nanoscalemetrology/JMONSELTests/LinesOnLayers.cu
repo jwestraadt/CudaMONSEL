@@ -36,6 +36,15 @@ namespace LinesOnLayers
 
    void run()
    {
+      {
+         // Require JMONSEL scattering tables to be installed
+         std::ifstream probe("C:\\Program Files\\NIST\\JMONSEL\\ScatteringTables\\glassyCTables\\IIMFPPennInterpglassyCSI.csv");
+         if (!probe.good()) {
+            printf("LinesOnLayers::run: JMONSEL scattering tables not found, skipping.\n");
+            return;
+         }
+      }
+
       //String dest = DefaultOutput;
       //new File(dest).mkdirs();
       //String filename = DefaultOutput + PathSep + "output.txt";

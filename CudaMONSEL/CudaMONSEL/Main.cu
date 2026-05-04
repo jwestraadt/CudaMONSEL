@@ -37,75 +37,37 @@
 
 int main()
 {
+   printf("init: CzyzewskiMott\n"); fflush(stdout);
    CzyzewskiMottScatteringAngle::init();
+   printf("init: NISTMott\n"); fflush(stdout);
    NISTMottScatteringAngle::init();
+   printf("init: Gas\n"); fflush(stdout);
    GasScatteringCrossSection::init();
+   printf("init: NISTMottRS\n"); fflush(stdout);
    NISTMottRS::init();
+   printf("init: Berger64\n"); fflush(stdout);
    MeanIonizationPotential::Berger64MeanIonizationPotential::readTabulatedValues();
+   printf("init: Berger83\n"); fflush(stdout);
    MeanIonizationPotential::Berger83MeanIonizationPotential::readTabulatedValues();
+   printf("init: done\n"); fflush(stdout);
 
-   Math2Test::testRandom1();
-   Math2Test::testRandom2();
+#define RUN(label, stmt) printf("TEST: %s\n", label); fflush(stdout); stmt; printf("PASS: %s\n", label); fflush(stdout);
 
-   UncertainValue2::UncertainValue2 v0(0, "abc", 5);
-   UncertainValue2::UncertainValue2 v1(1);
-   UncertainValue2::UncertainValue2 v2(2, 10);
-   UncertainValue2::UncertainValue2 v3(2, 10);
-   printf("%d\n", v1.equals(v2));
-   printf("%d\n", v1.equals(v3));
-   printf("%d\n", v2.equals(v3));
-   
-   UncertainValue2Test::UncertainValue2Test uvTest;
-   uvTest.testSpecialValues();
-   uvTest.testA();
-   uvTest.testB();
-   uvTest.testC();
-   uvTest.testAB();
-   uvTest.testAdd1();
-   uvTest.testAdd2();
-   uvTest.testAdd3();
-   uvTest.testMultiply();
-   uvTest.testDivide();
-   uvTest.testFunctions();
-   
-   ElementTest::ElementTest elementTest;
-   elementTest.testZero();
-   elementTest.testOne();
-
-   MaterialTest::MaterialTest mat;
-   mat.testOne();
-
-   AtomicShellTest::testOne();
-
-   EdgeEnergyTest::testOne();
-
-   MeanIonizationPotentialTest::testOne();
-   
-   SphereTest::testContains();
-   SphereTest::testGetFirstIntersection();
-
-   CylindricalShapeTest::testZero();
-   CylindricalShapeTest::testOne();
-   CylindricalShapeTest::testTwo();
-   CylindricalShapeTest::testThree();
-   CylindricalShapeTest::testFour();
-   CylindricalShapeTest::testFive();
-   CylindricalShapeTest::testSix();
-   CylindricalShapeTest::testSeven();
-   CylindricalShapeTest::testEight();
-   CylindricalShapeTest::testNine();
-   CylindricalShapeTest::testTen();
-   CylindricalShapeTest::testEleven();
-   CylindricalShapeTest::testTwelve();
-
-   BetheElectronEnergyLossTest::testOne();
-
-   MonteCarloSSTest::testOne();
-
-   SumShapeTest::testGetFirstIntersection();
-   //SumShapeTest::testAll();
-
-   LinesOnLayers::run();
+   RUN("Math2Test::testRandom1", Math2Test::testRandom1())
+   RUN("Math2Test::testRandom2", Math2Test::testRandom2())
+   RUN("UncertainValue2Test::testSpecialValues", { UncertainValue2Test::UncertainValue2Test uvTest; uvTest.testSpecialValues(); uvTest.testA(); uvTest.testB(); uvTest.testC(); uvTest.testAB(); uvTest.testAdd1(); uvTest.testAdd2(); uvTest.testAdd3(); uvTest.testMultiply(); uvTest.testDivide(); uvTest.testFunctions(); })
+   RUN("ElementTest", { ElementTest::ElementTest t; t.testZero(); t.testOne(); })
+   RUN("MaterialTest", { MaterialTest::MaterialTest t; t.testOne(); })
+   RUN("AtomicShellTest", AtomicShellTest::testOne())
+   RUN("EdgeEnergyTest", EdgeEnergyTest::testOne())
+   RUN("MeanIonizationPotentialTest", MeanIonizationPotentialTest::testOne())
+   RUN("SphereTest::testContains", SphereTest::testContains())
+   RUN("SphereTest::testGetFirstIntersection", SphereTest::testGetFirstIntersection())
+   RUN("CylindricalShapeTest", { CylindricalShapeTest::testZero(); CylindricalShapeTest::testOne(); CylindricalShapeTest::testTwo(); CylindricalShapeTest::testThree(); CylindricalShapeTest::testFour(); CylindricalShapeTest::testFive(); CylindricalShapeTest::testSix(); CylindricalShapeTest::testSeven(); CylindricalShapeTest::testEight(); CylindricalShapeTest::testNine(); CylindricalShapeTest::testTen(); CylindricalShapeTest::testEleven(); CylindricalShapeTest::testTwelve(); })
+   RUN("BetheElectronEnergyLossTest", BetheElectronEnergyLossTest::testOne())
+   RUN("MonteCarloSSTest", MonteCarloSSTest::testOne())
+   RUN("SumShapeTest", SumShapeTest::testGetFirstIntersection())
+   RUN("LinesOnLayers", LinesOnLayers::run())
 
    return 0;
 }

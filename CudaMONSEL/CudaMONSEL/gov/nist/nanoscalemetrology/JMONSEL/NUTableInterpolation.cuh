@@ -26,7 +26,7 @@ namespace NUTableInterpolation
       MatrixXd x;
       MatrixXd domain;
       VectorXd range;
-      int dim; // dimension of this table
+      int dim = 0; // dimension of this table
       // int[] nPoints; // Array of length dim with number of points for each x
       // double[] xinc; // Array of length dim with x increment size
       // double[] xmin; // Array of minimum x values
