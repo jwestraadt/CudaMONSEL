@@ -55,7 +55,192 @@ cd CudaMONSEL\CudaMONSEL
 ..\x64\Release\CudaMONSEL.exe
 ```
 
-`Main.cu` initializes the scattering data and then runs the enabled tests and simulations. Generated run logs, build directories, binaries, and local CSV outputs are ignored by git.
+With no arguments, `Main.cu` initializes the scattering data and then runs the built-in test and simulation sequence.
+
+To run from JSON input, pass a config file:
+
+```powershell
+cd CudaMONSEL\CudaMONSEL
+..\x64\Release\CudaMONSEL.exe input.json
+```
+
+The runtime JSON format uses a `simulations` array. Each entry has a `type` field. Supported runtime types are:
+
+- `bulk_yield`: fully configurable from JSON, including trajectory count, beam energies, output CSV, and phase material properties.
+- `lines_on_layers`: dispatches the existing hard-coded lines-on-layers simulation.
+- `self_tests`: runs the built-in test suite.
+
+`CudaMONSEL/CudaMONSEL/input.json` contains a Ni superalloy gamma/gamma-prime `bulk_yield` example. Generated run logs, build directories, binaries, and local CSV outputs are ignored by git.
+
+## BulkYield Example
+
+`BulkYield` simulates secondary electron (SE) and backscattered electron (BSE) yields for bulk homogeneous material phases as a function of beam energy. The included `input.json` models a Ni-based superalloy with two phases (gamma and gamma-prime) and is the recommended starting point for new material studies.
+
+### Running the included example
+
+```powershell
+cd CudaMONSEL\CudaMONSEL
+..\x64\Release\CudaMONSEL.exe input.json
+```
+
+Progress is printed to stdout per beam energy point. When finished, results are written to the CSV named in `output_csv` (default: `BulkYield_output.csv`):
+
+```
+phase,BeamE_eV,BSE_yield,SE_yield,total_yield
+gamma,200,0.0312,0.1847,0.2159
+gamma,500,0.0421,0.1523,0.1944
+...
+```
+
+### input.json reference
+
+#### Top-level fields
+
+| Field | Type | Description |
+|---|---|---|
+| `schema_version` | integer | Must be `1` |
+| `run_tests` | boolean | When `true`, runs the built-in test suite before simulations |
+| `simulations` | array | List of simulation entries executed in order |
+
+#### bulk_yield simulation fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `type` | string | — | Must be `"bulk_yield"` |
+| `name` | string | `"Ni superalloy gamma/gamma-prime"` | Label used in console output |
+| `enabled` | boolean | `true` | Set to `false` to skip this entry without removing it |
+| `output_csv` | string | `"BulkYield_output.csv"` | Output file path (relative to the working directory) |
+| `trajectories` | integer | `5000` | Number of electron trajectories per beam energy point per phase |
+| `beam_size_nm` | number | `0.5` | Gaussian beam 1-sigma radius in nm |
+| `secondary_electron_threshold_ev` | number | `50.0` | Electrons exiting below this energy (eV) count as SE; above as BSE |
+| `histogram_bin_size_ev` | number | `10.0` | Energy bin width (eV) used for the exit-energy histogram |
+
+#### beam_energies_ev
+
+An array of incident beam energies in eV. A separate yield point is computed for each energy for every phase.
+
+```json
+"beam_energies_ev": [200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 15000.0, 20000.0]
+```
+
+#### scattering models
+
+The `scattering` object selects the physical models used in the Monte Carlo scatter stack. All four models must be specified; only the combination shown below is currently supported.
+
+```json
+"scattering": {
+  "elastic":   "nist_mott",
+  "inelastic": "fitted",
+  "csd":       "joy_luo_nieminen",
+  "barrier":   "exp_qm"
+}
+```
+
+| Key | Supported value | Model description |
+|---|---|---|
+| `elastic` | `nist_mott` | NIST Mott elastic cross-sections (`SelectableElasticSM` + `NISTMottRS`) |
+| `inelastic` | `fitted` | `FittedInelSM` — parameterized SE generation; calibrated for organics, semi-quantitative for metals |
+| `csd` | `joy_luo_nieminen` | Joy–Luo–Nieminen continuous slowing-down model (`JoyLuoNieminenCSD`) |
+| `barrier` | `exp_qm` | Exponential quantum-mechanical surface barrier (`ExpQMBarrierSM`) |
+
+> **Note:** `FittedInelSM` gives a realistic SE yield trend for metals but absolute values should be treated as semi-quantitative. Replace with a tabulated inelastic model and JMONSEL scattering tables for calibrated results.
+
+#### phases — material parameters
+
+Each entry in the `phases` array defines one bulk material phase. All energy values are in eV and density in kg/m³.
+
+| Field | Required | Description |
+|---|---|---|
+| `name` | yes | Phase label used in CSV output |
+| `density_kg_m3` | yes | Mass density in kg/m³ |
+| `work_function_ev` | yes | Surface work function in eV |
+| `fermi_energy_ev` | yes | Fermi energy in eV (set to actual value for metals) |
+| `bandgap_ev` | no (default `0`) | Band gap in eV; use `0` for metals |
+| `secondary_generation_energy_ev` | yes | Mean energy per SE generation event in eV (~30 eV for metals, ~65 eV for organics) |
+| `break_energy_ev` | yes | CSD break energy in eV — transition point in the Joy–Luo–Nieminen model |
+| `composition` | yes (or `elements`) | Object mapping element symbol to mole fraction (unnormalized weights are normalised internally) |
+
+The `composition` object uses standard element symbols as keys:
+
+```json
+"composition": {
+  "Ni": 63.0,
+  "Cr":  8.0,
+  "Co": 10.0,
+  "W":   6.0,
+  "Re":  4.0,
+  "Al":  6.0,
+  "Ta":  3.0
+}
+```
+
+Alternatively, an `elements` array may be used with explicit `symbol` and `fraction` entries:
+
+```json
+"elements": [
+  { "symbol": "Ni", "fraction": 63.0 },
+  { "symbol": "Al", "fraction": 12.0 }
+]
+```
+
+#### Full example — Ni superalloy gamma/gamma-prime
+
+```json
+{
+  "schema_version": 1,
+  "run_tests": false,
+  "simulations": [
+    {
+      "type": "bulk_yield",
+      "name": "Ni superalloy gamma/gamma-prime",
+      "enabled": true,
+      "output_csv": "BulkYield_output.csv",
+      "trajectories": 5000,
+      "beam_size_nm": 0.5,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 10.0,
+      "scattering": {
+        "elastic":   "nist_mott",
+        "inelastic": "fitted",
+        "csd":       "joy_luo_nieminen",
+        "barrier":   "exp_qm"
+      },
+      "beam_energies_ev": [200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 15000.0, 20000.0],
+      "phases": [
+        {
+          "name": "gamma",
+          "density_kg_m3": 8700.0,
+          "work_function_ev": 5.15,
+          "fermi_energy_ev": 8.8,
+          "bandgap_ev": 0.0,
+          "secondary_generation_energy_ev": 30.0,
+          "break_energy_ev": 45.0,
+          "composition": { "Ni": 63.0, "Cr": 8.0, "Co": 10.0, "W": 6.0, "Re": 4.0, "Al": 6.0, "Ta": 3.0 }
+        },
+        {
+          "name": "gamma_prime",
+          "density_kg_m3": 8200.0,
+          "work_function_ev": 4.9,
+          "fermi_energy_ev": 7.5,
+          "bandgap_ev": 0.0,
+          "secondary_generation_energy_ev": 30.0,
+          "break_energy_ev": 45.0,
+          "composition": { "Ni": 75.0, "Al": 12.0, "Ti": 5.0, "Ta": 5.0, "Cr": 3.0 }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Adapting to a new material
+
+1. Copy `input.json` and change `name` and `output_csv`.
+2. Update `composition` with your element symbols and mole fractions (values are normalised internally).
+3. Set `density_kg_m3`, `work_function_ev`, and `fermi_energy_ev` from literature or DFT.
+4. For metals keep `bandgap_ev` at `0` and `secondary_generation_energy_ev` at `~30`; for insulators/organics use `~65`.
+5. Start with a low `trajectories` count (500–1000) to verify setup, then increase to 5000+ for production statistics.
+6. Adjust `beam_energies_ev` to cover the energy range relevant to your SEM operating conditions.
 
 ## Setting Up A New Simulation
 
