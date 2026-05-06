@@ -12,6 +12,7 @@
 [Rr]elease/
 x64/
 build/
+build-*/
 bld/
 [Bb]in/
 [Oo]bj/
@@ -159,6 +160,7 @@ ClientBin/
 *.pfx
 *.publishsettings
 node_modules/
+.claude/
 
 # RIA/Silverlight projects
 Generated_Code/
@@ -199,3 +201,7 @@ Debug
 *.user
 
 CudaMONSEL/CudaMONSEL/output.txt
+
+# Local run output
+/*.txt
+CudaMONSEL/CudaMONSEL/*_output.csv

@@ -54,8 +54,8 @@ namespace BulkYield
 
    // Beam energies to sweep (eV) -- keep below ~25 keV; CSD slow-down at very
    // high energies can make trajectories extremely long in the current framework
-   static const double BEAM_ENERGIES_EV[] = { 500., 1000., 2000., 5000., 10000., 15000., 20000. };
-   static const int    N_BEAM_ENERGIES    = 7;
+   static const double BEAM_ENERGIES_EV[] = { 200., 500., 1000., 2000., 5000., 10000., 15000., 20000. };
+   static const int    N_BEAM_ENERGIES    = 8;
 
    // =========================================================================
    // GAMMA PHASE  (Ni-rich FCC matrix)

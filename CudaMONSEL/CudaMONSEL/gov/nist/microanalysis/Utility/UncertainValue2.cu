@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <algorithm>
+#include <iterator>
 
 #include "Amphibian\Hasher.cuh"
 
@@ -326,7 +327,7 @@ namespace UncertainValue2
    {
       double v = v1.doubleValue() / v2.doubleValue();
       if (isnan(v) || isinf(v)) {
-         printf("UncertainValue2::divide: isnan(v) || isinf(v) (%.10e)\n");
+         printf("UncertainValue2::divide: isnan(v) || isinf(v) (%.10e)\n", v);
          return v;
       }
 
@@ -359,7 +360,7 @@ namespace UncertainValue2
    {
       double v = res.doubleValue(); // v1.doubleValue() / v2.doubleValue();
       if (isnan(v) || isinf(v)) {
-         printf("UncertainValue2::divide: isnan(v) || isinf(v) (%.10e)\n");
+         printf("UncertainValue2::divide: isnan(v) || isinf(v) (%.10e)\n", v);
       }
 
       UncertainValue2::KeySetT keys;
