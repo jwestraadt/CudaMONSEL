@@ -528,7 +528,11 @@ namespace CompositeImage
          SphereT                precipSphere_t(precipCenter, precipRadius);
          RegionT                precipRegion_t(&bulkRegion_t, &precMSM_t, &precipSphere_t);
 
-         double        egCenter[] = { x, y, -1.e-9 };
+         // Start beam above the sphere's topmost point (precipCenter[2] - precipRadius)
+         // so the initial region lookup never places the electron inside the sphere.
+         double        beamStartZ = (precipCenter[2] - precipRadius) - 5.e-9;
+         if (beamStartZ > -1.e-9) beamStartZ = -1.e-9;
+         double        egCenter[] = { x, y, beamStartZ };
          GaussianBeamT eg_t(beamsize, beamE, origin);
          eg_t.setCenter(egCenter);
 
