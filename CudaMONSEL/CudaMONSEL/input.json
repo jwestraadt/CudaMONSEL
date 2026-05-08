@@ -64,6 +64,73 @@
           }
         }
       ]
+    },
+    {
+      "type": "composite_yield",
+      "name": "Ni gamma matrix + gamma-prime precipitate",
+      "enabled": true,
+      "output_csv": "CompositeYield_output.csv",
+      "trajectories": 5000,
+      "beam_size_nm": 0.5,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 10.0,
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "beam_energies_ev": [
+        200.0,
+        500.0,
+        1000.0,
+        2000.0,
+        5000.0,
+        10000.0,
+        15000.0,
+        20000.0
+      ],
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma_prime",
+        "density_kg_m3": 8200.0,
+        "work_function_ev": 4.9,
+        "fermi_energy_ev": 7.5,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 75.0,
+          "Al": 12.0,
+          "Ti": 5.0,
+          "Ta": 5.0,
+          "Cr": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 25.0,
+        "center_depth_nm": 25.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      }
     }
   ]
 }

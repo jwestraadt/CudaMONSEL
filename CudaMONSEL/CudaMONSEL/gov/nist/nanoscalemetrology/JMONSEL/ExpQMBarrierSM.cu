@@ -108,7 +108,7 @@ namespace ExpQMBarrierSM
       * This choice gives maximum transmission probability and no deflection of
       * the electron's path.
       */
-      if (!nb.empty())
+      if (nb.empty())
          nb = n0;
 
       /*
