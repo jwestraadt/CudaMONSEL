@@ -87,6 +87,8 @@ namespace CompositeImage
       std::string name;
       std::string outputCsv;
       std::string outputPgmSE;
+      std::string outputPgmSE1;
+      std::string outputPgmSE2;
       std::string outputPgmBSE;
       int         trajectoriesPerPixel;
       double      beamEnergyEv;
@@ -112,6 +114,8 @@ namespace CompositeImage
       config.name                   = "Ni gamma matrix + gamma-prime precipitate image";
       config.outputCsv              = "CompositeImage_output.csv";
       config.outputPgmSE            = "CompositeImage_SE.pgm";
+      config.outputPgmSE1           = "";
+      config.outputPgmSE2           = "";
       config.outputPgmBSE           = "CompositeImage_BSE.pgm";
       config.trajectoriesPerPixel   = 100;
       config.beamEnergyEv           = 5000.0;
@@ -311,6 +315,8 @@ namespace CompositeImage
       config.name                 = stringOr(src, config.name,               "name");
       config.outputCsv            = stringOr(src, config.outputCsv,          "output_csv",    "output");
       config.outputPgmSE          = stringOr(src, config.outputPgmSE,        "output_pgm_se", "output_pgm");
+      config.outputPgmSE1         = stringOr(src, config.outputPgmSE1,       "output_pgm_se1");
+      config.outputPgmSE2         = stringOr(src, config.outputPgmSE2,       "output_pgm_se2");
       config.outputPgmBSE         = stringOr(src, config.outputPgmBSE,       "output_pgm_bse");
       config.trajectoriesPerPixel = (int)numberOr(src, (double)config.trajectoriesPerPixel,
                                                   "trajectories_per_pixel", "trajectories");
@@ -459,12 +465,14 @@ namespace CompositeImage
       double dym  = (ny > 1) ? (2.0 * hw / (ny - 1)) : 0.0;
 
       // Results: row 0 = +halfWidthNm (top of image), row ny-1 = -halfWidthNm (bottom).
-      std::vector<std::vector<double>> seMap (ny, std::vector<double>(nx, 0.0));
-      std::vector<std::vector<double>> bseMap(ny, std::vector<double>(nx, 0.0));
+      std::vector<std::vector<double>> seMap  (ny, std::vector<double>(nx, 0.0));
+      std::vector<std::vector<double>> se1Map (ny, std::vector<double>(nx, 0.0));
+      std::vector<std::vector<double>> se2Map (ny, std::vector<double>(nx, 0.0));
+      std::vector<std::vector<double>> bseMap (ny, std::vector<double>(nx, 0.0));
 
       std::ofstream csvFile(config.outputCsv.c_str());
       if (!csvFile.good()) throw std::runtime_error("Unable to open composite_image output file: " + config.outputCsv);
-      csvFile << "x_nm,y_nm,SE_yield,BSE_yield,total_yield\n";
+      csvFile << "x_nm,y_nm,SE_yield,SE1_yield,SE2_yield,BSE_yield,total_yield\n";
 
       auto wallStart  = std::chrono::system_clock::now();
       int  totalPixels = nx * ny;
@@ -530,25 +538,34 @@ namespace CompositeImage
          monte_t.runMultipleTrajectories(config.trajectoriesPerPixel);
          monte_t.removeActionListener(back_t);
 
-         const HistogramT& hist   = back_t.backscatterEnergyHistogram();
+         const HistogramT& hist    = back_t.backscatterEnergyHistogram();
+         const HistogramT& se1hist = back_t.se1EnergyHistogram();
+         const HistogramT& se2hist = back_t.se2EnergyHistogram();
          double ePerBin  = config.beamEnergyEv / hist.binCount();
          int    maxSEbin = (int)(config.seThresholdEv / ePerBin);
-         int    totalSE  = 0;
-         for (int j = 0; j < maxSEbin && j < (int)hist.binCount(); ++j)
-            totalSE += hist.counts(j);
+         int    totalSE = 0, totalSE1 = 0, totalSE2 = 0;
+         for (int j = 0; j < maxSEbin && j < (int)hist.binCount(); ++j) {
+            totalSE  += hist.counts(j);
+            totalSE1 += se1hist.counts(j);
+            totalSE2 += se2hist.counts(j);
+         }
 
-         double SEY  = (double)totalSE / config.trajectoriesPerPixel;
+         double SEY  = (double)totalSE  / config.trajectoriesPerPixel;
+         double SE1Y = (double)totalSE1 / config.trajectoriesPerPixel;
+         double SE2Y = (double)totalSE2 / config.trajectoriesPerPixel;
          double BSEY = back_t.backscatterFraction() - SEY;
 
          seMap [row][col] = SEY;   // unique cell per thread, no race
+         se1Map[row][col] = SE1Y;
+         se2Map[row][col] = SE2Y;
          bseMap[row][col] = BSEY;
 
          #pragma omp critical(progress)
          {
             ++pixelsDone;
             if (pixelsDone % 10 == 0 || pixelsDone == totalPixels) {
-               printf("  pixel %d/%d  (x=%.1f nm, y=%.1f nm)  SE=%.4f  BSE=%.4f\n",
-                      pixelsDone, totalPixels, x * 1.e9, y * 1.e9, SEY, BSEY);
+               printf("  pixel %d/%d  (x=%.1f nm, y=%.1f nm)  SE=%.4f  SE1=%.4f  SE2=%.4f  BSE=%.4f\n",
+                      pixelsDone, totalPixels, x * 1.e9, y * 1.e9, SEY, SE1Y, SE2Y, BSEY);
                fflush(stdout);
             }
          }
@@ -565,7 +582,8 @@ namespace CompositeImage
             double y     = cy + hw - row * dym;
             double total = seMap[row][col] + bseMap[row][col];
             csvFile << x * 1.e9 << "," << y * 1.e9 << ","
-                    << seMap[row][col] << "," << bseMap[row][col] << "," << total << "\n";
+                    << seMap[row][col]  << "," << se1Map[row][col] << ","
+                    << se2Map[row][col] << "," << bseMap[row][col] << "," << total << "\n";
          }
       }
       csvFile.close();
@@ -573,6 +591,14 @@ namespace CompositeImage
       if (!config.outputPgmSE.empty()) {
          writePGM(config.outputPgmSE, seMap, ny, nx);
          printf("CompositeImage: SE image  --> %s\n", config.outputPgmSE.c_str()); fflush(stdout);
+      }
+      if (!config.outputPgmSE1.empty()) {
+         writePGM(config.outputPgmSE1, se1Map, ny, nx);
+         printf("CompositeImage: SE1 image --> %s\n", config.outputPgmSE1.c_str()); fflush(stdout);
+      }
+      if (!config.outputPgmSE2.empty()) {
+         writePGM(config.outputPgmSE2, se2Map, ny, nx);
+         printf("CompositeImage: SE2 image --> %s\n", config.outputPgmSE2.c_str()); fflush(stdout);
       }
       if (!config.outputPgmBSE.empty()) {
          writePGM(config.outputPgmBSE, bseMap, ny, nx);
