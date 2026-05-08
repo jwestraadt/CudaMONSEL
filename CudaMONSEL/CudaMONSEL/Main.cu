@@ -6,6 +6,10 @@
 #include <stdio.h>
 
 #include <cuda_runtime.h>
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "gov\nist\microanalysis\Utility\UncertainValue2.cuh"
 #include "gov\nist\microanalysis\EPQLibrary\Element.cuh"
@@ -35,8 +39,9 @@
 #include "gov\nist\nanoscalemetrology\JMONSELTests\BulkYield.cuh"
 
 #include "ImageUtil.h"
+#include "RuntimeInput.cuh"
 
-int main()
+static void initializeRuntime()
 {
    printf("init: CzyzewskiMott\n"); fflush(stdout);
    CzyzewskiMottScatteringAngle::init();
@@ -51,7 +56,10 @@ int main()
    printf("init: Berger83\n"); fflush(stdout);
    MeanIonizationPotential::Berger83MeanIonizationPotential::readTabulatedValues();
    printf("init: done\n"); fflush(stdout);
+}
 
+static void runSelfTests()
+{
 #define RUN(label, stmt) printf("TEST: %s\n", label); fflush(stdout); stmt; printf("PASS: %s\n", label); fflush(stdout);
 
    RUN("Math2Test::testRandom1", Math2Test::testRandom1())
@@ -68,8 +76,116 @@ int main()
    RUN("BetheElectronEnergyLossTest", BetheElectronEnergyLossTest::testOne())
    RUN("MonteCarloSSTest", MonteCarloSSTest::testOne())
    RUN("SumShapeTest", SumShapeTest::testGetFirstIntersection())
+
+#undef RUN
+}
+
+static void runDefaultSuite()
+{
+#define RUN(label, stmt) printf("TEST: %s\n", label); fflush(stdout); stmt; printf("PASS: %s\n", label); fflush(stdout);
+
+   runSelfTests();
    RUN("LinesOnLayers", LinesOnLayers::run())
    RUN("BulkYield", BulkYield::run())
+
+#undef RUN
+}
+
+static std::string lowerCopy(const std::string& value)
+{
+   std::string result = value;
+   for (size_t i = 0; i < result.size(); ++i) {
+      if (result[i] >= 'A' && result[i] <= 'Z')
+         result[i] = (char)(result[i] - 'A' + 'a');
+   }
+   return result;
+}
+
+static void collectSimulations(const RuntimeInput::JsonValue& root, std::vector<const RuntimeInput::JsonValue*>& simulations)
+{
+   const RuntimeInput::JsonValue* run = root.find("run");
+   const RuntimeInput::JsonValue* list = root.find("simulations");
+   if (list == nullptr && run != nullptr && run->isObject())
+      list = run->find("simulations");
+
+   if (list != nullptr) {
+      if (!list->isArray()) throw std::runtime_error("JSON simulations field must be an array");
+      for (size_t i = 0; i < list->arrayValue.size(); ++i)
+         simulations.push_back(&list->arrayValue[i]);
+      return;
+   }
+
+   if (root.find("type") != nullptr) {
+      simulations.push_back(&root);
+      return;
+   }
+
+   if (run != nullptr && run->isObject() && run->find("type") != nullptr)
+      simulations.push_back(run);
+}
+
+static bool boolFromRootOrRun(const RuntimeInput::JsonValue& root, const char* key, bool defaultValue)
+{
+   const RuntimeInput::JsonValue* run = root.find("run");
+   if (run != nullptr && run->isObject()) {
+      const RuntimeInput::JsonValue* runValue = run->find(key);
+      if (runValue != nullptr) {
+         if (!runValue->isBool()) throw std::runtime_error(std::string("JSON field must be boolean: ") + key);
+         return runValue->boolValue;
+      }
+   }
+   return root.boolOr(key, defaultValue);
+}
+
+static void runConfiguredSimulation(const RuntimeInput::JsonValue& simulation)
+{
+   if (!simulation.isObject()) throw std::runtime_error("Each simulation entry must be an object");
+   if (!simulation.boolOr("enabled", true)) return;
+
+   std::string type = lowerCopy(simulation.stringOr("type", ""));
+   if (type == "bulk_yield" || type == "bulk-yield" || type == "bulkyield") {
+      printf("SIMULATION: bulk_yield\n"); fflush(stdout);
+      BulkYield::run(simulation);
+   }
+   else if (type == "lines_on_layers" || type == "lines-on-layers" || type == "linesonlayers") {
+      printf("SIMULATION: lines_on_layers\n"); fflush(stdout);
+      LinesOnLayers::run();
+   }
+   else if (type == "self_tests" || type == "tests" || type == "test_suite") {
+      printf("SIMULATION: self_tests\n"); fflush(stdout);
+      runSelfTests();
+   }
+   else {
+      throw std::runtime_error("Unknown simulation type in JSON input: " + type);
+   }
+}
+
+int main(int argc, char** argv)
+{
+   try {
+      initializeRuntime();
+
+      if (argc <= 1) {
+         runDefaultSuite();
+         return 0;
+      }
+
+      RuntimeInput::JsonValue root = RuntimeInput::parseFile(argv[1]);
+      if (boolFromRootOrRun(root, "run_tests", false))
+         runSelfTests();
+
+      std::vector<const RuntimeInput::JsonValue*> simulations;
+      collectSimulations(root, simulations);
+      if (simulations.empty())
+         throw std::runtime_error("JSON input must define simulations[] or a single object with a type field");
+
+      for (size_t i = 0; i < simulations.size(); ++i)
+         runConfiguredSimulation(*simulations[i]);
+   }
+   catch (const std::exception& ex) {
+      printf("CudaMONSEL input error: %s\n", ex.what()); fflush(stdout);
+      return 1;
+   }
 
    return 0;
 }

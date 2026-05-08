@@ -114,6 +114,7 @@ gamma,500,0.0421,0.1523,0.1944
 | `beam_size_nm` | number | `0.5` | Gaussian beam 1-sigma radius in nm |
 | `secondary_electron_threshold_ev` | number | `50.0` | Electrons exiting below this energy (eV) count as SE; above as BSE |
 | `histogram_bin_size_ev` | number | `10.0` | Energy bin width (eV) used for the exit-energy histogram |
+| `output_histogram_csv` | string | *(omit to disable)* | If set, writes the full exit-energy histogram to this CSV file |
 
 #### beam_energies_ev
 
@@ -121,6 +122,32 @@ An array of incident beam energies in eV. A separate yield point is computed for
 
 ```json
 "beam_energies_ev": [200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 15000.0, 20000.0]
+```
+
+#### output_histogram_csv
+
+When `output_histogram_csv` is set, a second CSV is written with one row per energy bin per beam-energy point per phase. The bin edges are in eV and match the `histogram_bin_size_ev` resolution used internally to separate SE from BSE.
+
+```
+phase,beam_energy_ev,bin_min_ev,bin_max_ev,counts,yield
+gamma,1000,0.0,10.0,312,0.0624
+gamma,1000,10.0,20.0,287,0.0574
+...
+```
+
+| Column | Description |
+|---|---|
+| `phase` | Phase name from the `phases` array |
+| `beam_energy_ev` | Incident beam energy for this run |
+| `bin_min_ev` | Lower edge of the energy bin (eV) |
+| `bin_max_ev` | Upper edge of the energy bin (eV) |
+| `counts` | Raw electron count in this bin |
+| `yield` | `counts / trajectories` |
+
+To enable histogram output, add the field to your simulation entry:
+
+```json
+"output_histogram_csv": "BulkYield_histogram.csv"
 ```
 
 #### scattering models

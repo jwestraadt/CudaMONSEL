@@ -228,6 +228,7 @@
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSEL\TabulatedInelasticSM.cuh" />
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSEL\ZeroCSD.cuh" />
     <ClInclude Include="ImageUtil.h" />
+    <ClInclude Include="RuntimeInput.cuh" />
     <ClInclude Include="TimeUtil.h" />
   </ItemGroup>
   <ItemGroup>
@@ -307,8 +308,8 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
-copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(CudaToolkitBinDir)\cudart*.dll" copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
@@ -338,8 +339,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <AdditionalDependencies>cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
-copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(CudaToolkitBinDir)\cudart*.dll" copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -365,8 +366,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <AdditionalLibraryDirectories>;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
-copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(CudaToolkitBinDir)\cudart*.dll" copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
@@ -397,8 +398,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <AdditionalDependencies>cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
-copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
+      <Command>if exist "$(CudaToolkitBinDir)\cudart*.dll" copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
