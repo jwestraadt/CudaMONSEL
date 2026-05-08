@@ -223,8 +223,6 @@ namespace MonteCarloSS
    {
       fireEvent(FirstTrajectoryEvent);
       for (int i = 0; i < n; ++i) {
-         //if (i == 50)
-            printf("%d\n", i);
          runTrajectory();
       }
       fireEvent(LastTrajectoryEvent);

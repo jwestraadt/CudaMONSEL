@@ -38,6 +38,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <omp.h>
 
 namespace CompositeYield
 {
@@ -384,7 +385,7 @@ namespace CompositeYield
              config.precipitate.centerYNm); fflush(stdout);
       printf("BeamE_eV,BSE_yield,SE_yield,total_yield\n"); fflush(stdout);
 
-      // === Matrix scatter model ===
+      // === Matrix material ===
       double matPotU = -matrix.workfun - matrix.efermi;
       CompositionT matComp;
       matComp.defineByMoleFraction(matrix.elements.data(), (int)matrix.elements.size(),
@@ -394,16 +395,7 @@ namespace CompositeYield
       matMat.setBandgap(ToSI::eV(matrix.bandgap));
       matMat.setEnergyCBbottom(ToSI::eV(matPotU));
 
-      SelectableElasticSMT matElastic(matMat, NISTMottRS::Factory);
-      JoyLuoNieminenCSDT   matCSD(matMat, ToSI::eV(matrix.breakEeV));
-      FittedInelSMT        matInel(matMat, ToSI::eV(matrix.energySEgen), matCSD);
-      ExpQMBarrierSMT      matBarrier(&matMat);
-      MONSEL_MaterialScatterModelT matMSM(&matMat, &matBarrier);
-      matMSM.addScatterMechanism(&matElastic);
-      matMSM.addScatterMechanism(&matInel);
-      matMSM.setCSD(&matCSD);
-
-      // === Precipitate scatter model ===
+      // === Precipitate material ===
       double precPotU = -precip.workfun - precip.efermi;
       CompositionT precComp;
       precComp.defineByMoleFraction(precip.elements.data(), (int)precip.elements.size(),
@@ -413,93 +405,125 @@ namespace CompositeYield
       precMat.setBandgap(ToSI::eV(precip.bandgap));
       precMat.setEnergyCBbottom(ToSI::eV(precPotU));
 
-      SelectableElasticSMT precElastic(precMat, NISTMottRS::Factory);
-      JoyLuoNieminenCSDT   precCSD(precMat, ToSI::eV(precip.breakEeV));
-      FittedInelSMT        precInel(precMat, ToSI::eV(precip.energySEgen), precCSD);
-      ExpQMBarrierSMT      precBarrier(&precMat);
-      MONSEL_MaterialScatterModelT precMSM(&precMat, &precBarrier);
-      precMSM.addScatterMechanism(&precElastic);
-      precMSM.addScatterMechanism(&precInel);
-      precMSM.setCSD(&precCSD);
-
       // === Vacuum ===
       SEmaterialT vacMat;
       vacMat.setName("vacuum");
-      ExpQMBarrierSMT              vacBarrier(&vacMat);
-      MONSEL_MaterialScatterModelT vacMSM(&vacMat, &vacBarrier);
 
-      // === Geometry ===
-      NullMaterialScatterModelT NULL_MSM;
-      const double origin[] = { 0., 0., 0. };
-      SphereT chamberSphere(origin, MonteCarloSS::ChamberRadius);
-      RegionT chamber(nullptr, &NULL_MSM, &chamberSphere);
-      chamber.updateMaterial(*chamber.getScatterModel(), vacMSM);
-
+      // === Geometry constants ===
+      const double origin[]     = { 0., 0., 0. };
       const double normalvec[]  = { 0., 0., -1. };
       const double surfacePos[] = { 0., 0.,  0. };
-      NormalMultiPlaneShapeT surface;
-      PlaneT pl(normalvec, 3, surfacePos, 3);
-      surface.addPlane(pl);
-      RegionT bulkRegion(&chamber, &matMSM, (NormalShapeT*)&surface);
-
-      // Precipitate sphere — self-registers into bulkRegion.mSubRegions on construction
       const double precipCenter[] = {
-         config.precipitate.centerXNm    * 1.e-9,
-         config.precipitate.centerYNm    * 1.e-9,
+         config.precipitate.centerXNm     * 1.e-9,
+         config.precipitate.centerYNm     * 1.e-9,
          config.precipitate.centerDepthNm * 1.e-9
       };
       double precipRadius = config.precipitate.radiusNm * 1.e-9;
-      SphereT precipSphere(precipCenter, precipRadius);
-      RegionT precipRegion(&bulkRegion, &precMSM, &precipSphere);
+      double beamsize     = config.beamSizeNm * 1.e-9;
 
-      double beamsize = config.beamSizeNm * 1.e-9;
+      int nEnergies = (int)config.beamEnergiesEv.size();
 
-      for (size_t ei = 0; ei < config.beamEnergiesEv.size(); ++ei) {
+      struct EnergyResult {
+         double beamEeV, SEY, BSEY, total;
+         std::vector<int>    histCounts;
+         std::vector<double> histMinEv, histMaxEv;
+      };
+      std::vector<EnergyResult> results(nEnergies);
+
+      #pragma omp parallel for schedule(dynamic) shared(results)
+      for (int ei = 0; ei < nEnergies; ++ei) {
          double beamEeV = config.beamEnergiesEv[ei];
          double beamE   = ToSI::eV(beamEeV);
 
-         GaussianBeamT eg(beamsize, beamE, origin);
+         // Per-worker scatter models; these classes cache rates/energies during tracking.
+         SelectableElasticSMT         matElastic_t(matMat, NISTMottRS::Factory);
+         JoyLuoNieminenCSDT           matCSD_t(matMat, ToSI::eV(matrix.breakEeV));
+         FittedInelSMT                matInel_t(matMat, ToSI::eV(matrix.energySEgen), matCSD_t);
+         ExpQMBarrierSMT              matBarrier_t(&matMat);
+         MONSEL_MaterialScatterModelT matMSM_t(&matMat, &matBarrier_t);
+         matMSM_t.addScatterMechanism(&matElastic_t);
+         matMSM_t.addScatterMechanism(&matInel_t);
+         matMSM_t.setCSD(&matCSD_t);
+
+         SelectableElasticSMT         precElastic_t(precMat, NISTMottRS::Factory);
+         JoyLuoNieminenCSDT           precCSD_t(precMat, ToSI::eV(precip.breakEeV));
+         FittedInelSMT                precInel_t(precMat, ToSI::eV(precip.energySEgen), precCSD_t);
+         ExpQMBarrierSMT              precBarrier_t(&precMat);
+         MONSEL_MaterialScatterModelT precMSM_t(&precMat, &precBarrier_t);
+         precMSM_t.addScatterMechanism(&precElastic_t);
+         precMSM_t.addScatterMechanism(&precInel_t);
+         precMSM_t.setCSD(&precCSD_t);
+
+         ExpQMBarrierSMT              vacBarrier_t(&vacMat);
+         MONSEL_MaterialScatterModelT vacMSM_t(&vacMat, &vacBarrier_t);
+
+         // Per-thread geometry
+         SphereT                chamberSphere_t(origin, MonteCarloSS::ChamberRadius);
+         NullMaterialScatterModelT nullMSM_t;
+         RegionT                chamber_t(nullptr, &nullMSM_t, &chamberSphere_t);
+         chamber_t.updateMaterial(*chamber_t.getScatterModel(), vacMSM_t);
+         NormalMultiPlaneShapeT surface_t;
+         PlaneT                 pl_t(normalvec, 3, surfacePos, 3);
+         surface_t.addPlane(pl_t);
+         RegionT                bulkRegion_t(&chamber_t, &matMSM_t, (NormalShapeT*)&surface_t);
+         SphereT                precipSphere_t(precipCenter, precipRadius);
+         RegionT                precipRegion_t(&bulkRegion_t, &precMSM_t, &precipSphere_t);
+
+         GaussianBeamT eg_t(beamsize, beamE, origin);
          double egCenter[] = { 0., 0., -1.e-9 };
-         eg.setCenter(egCenter);
+         eg_t.setCenter(egCenter);
 
-         MonteCarloSS::MonteCarloSS monte(&eg, &chamber, eg.createElectron());
+         MonteCarloSS::MonteCarloSS monte_t(&eg_t, &chamber_t, eg_t.createElectron());
 
-         int nbins = (int)(beamEeV / config.histogramBinSizeEv);
-         if (nbins < 1) nbins = 1;
-         BackscatterStatsT back(monte, nbins);
-         monte.addActionListener(back);
+         int nbins_t = (int)(beamEeV / config.histogramBinSizeEv);
+         if (nbins_t < 1) nbins_t = 1;
+         BackscatterStatsT back_t(monte_t, nbins_t);
+         monte_t.addActionListener(back_t);
+         monte_t.runMultipleTrajectories(config.trajectories);
+         monte_t.removeActionListener(back_t);
 
-         monte.runMultipleTrajectories(config.trajectories);
-
-         const HistogramT& hist = back.backscatterEnergyHistogram();
-         double ePerBin         = beamEeV / hist.binCount();
-         int    maxSEbin        = (int)(config.seThresholdEv / ePerBin);
-         int    totalSE         = 0;
+         const HistogramT& hist = back_t.backscatterEnergyHistogram();
+         double ePerBin  = beamEeV / hist.binCount();
+         int    maxSEbin = (int)(config.seThresholdEv / ePerBin);
+         int    totalSE  = 0;
          for (int j = 0; j < maxSEbin && j < (int)hist.binCount(); ++j)
             totalSE += hist.counts(j);
 
-         double SEY   = (double)totalSE / config.trajectories;
-         double BSEY  = back.backscatterFraction() - SEY;
-         double total = back.backscatterFraction();
+         EnergyResult& r = results[ei];   // unique index, no race
+         r.beamEeV = beamEeV;
+         r.SEY     = (double)totalSE / config.trajectories;
+         r.BSEY    = back_t.backscatterFraction() - r.SEY;
+         r.total   = back_t.backscatterFraction();
 
-         printf("%.0f,%.4f,%.4f,%.4f\n", beamEeV, BSEY, SEY, total); fflush(stdout);
-         outfile << config.name << "," << beamEeV << ","
-                 << BSEY << "," << SEY << "," << total << "\n";
+         if (histfile != nullptr) {
+            r.histCounts.resize(hist.binCount());
+            r.histMinEv.resize(hist.binCount());
+            r.histMaxEv.resize(hist.binCount());
+            for (int j = 0; j < (int)hist.binCount(); ++j) {
+               r.histCounts[j] = hist.counts(j);
+               r.histMinEv[j]  = hist.minValue(j);
+               r.histMaxEv[j]  = hist.maxValue(j);
+            }
+         }
+      }
+
+      // Write results in energy order after parallel section
+      for (int ei = 0; ei < nEnergies; ++ei) {
+         const EnergyResult& r = results[ei];
+         printf("%.0f,%.4f,%.4f,%.4f\n", r.beamEeV, r.BSEY, r.SEY, r.total); fflush(stdout);
+         outfile << config.name << "," << r.beamEeV << ","
+                 << r.BSEY << "," << r.SEY << "," << r.total << "\n";
          outfile.flush();
 
          if (histfile != nullptr) {
-            for (int j = 0; j < (int)hist.binCount(); ++j) {
-               double binMin = hist.minValue(j);
-               double binMax = hist.maxValue(j);
-               *histfile << config.name << "," << beamEeV << ","
-                         << binMin << "," << binMax << ","
-                         << hist.counts(j) << ","
-                         << (double)hist.counts(j) / config.trajectories << "\n";
+            for (int j = 0; j < (int)r.histCounts.size(); ++j) {
+               *histfile << config.name << "," << r.beamEeV << ","
+                         << r.histMinEv[j] << "," << r.histMaxEv[j] << ","
+                         << r.histCounts[j] << ","
+                         << (double)r.histCounts[j] / config.trajectories << "\n";
             }
             histfile->flush();
          }
-
-         monte.removeActionListener(back);
       }
    }
 
