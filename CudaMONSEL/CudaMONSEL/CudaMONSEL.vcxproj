@@ -360,6 +360,7 @@ if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\c
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -376,6 +377,7 @@ if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\c
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <CodeGeneration>compute_89,sm_89</CodeGeneration>
+      <AdditionalOptions>-Xcompiler /openmp %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDeps>
       </AdditionalDeps>
     </CudaCompile>
@@ -393,6 +395,7 @@ if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\c
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -409,6 +412,7 @@ if exist "$(CudaToolkitBinDir)\x64\cudart*.dll" copy "$(CudaToolkitBinDir)\x64\c
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_89,sm_89</CodeGeneration>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <AdditionalOptions>-Xcompiler /openmp %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

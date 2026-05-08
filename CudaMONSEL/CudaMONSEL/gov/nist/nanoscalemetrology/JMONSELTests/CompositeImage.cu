@@ -40,6 +40,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <omp.h>
 
 namespace CompositeImage
 {
@@ -404,7 +405,7 @@ namespace CompositeImage
              config.scan.nxPixels, config.scan.nyPixels, config.scan.halfWidthNm,
              config.beamEnergyEv, config.trajectoriesPerPixel); fflush(stdout);
 
-      // === Matrix scatter model ===
+      // === Matrix material ===
       double matPotU = -matrix.workfun - matrix.efermi;
       CompositionT matComp;
       matComp.defineByMoleFraction(matrix.elements.data(), (int)matrix.elements.size(),
@@ -414,16 +415,7 @@ namespace CompositeImage
       matMat.setBandgap(ToSI::eV(matrix.bandgap));
       matMat.setEnergyCBbottom(ToSI::eV(matPotU));
 
-      SelectableElasticSMT matElastic(matMat, NISTMottRS::Factory);
-      JoyLuoNieminenCSDT   matCSD(matMat, ToSI::eV(matrix.breakEeV));
-      FittedInelSMT        matInel(matMat, ToSI::eV(matrix.energySEgen), matCSD);
-      ExpQMBarrierSMT      matBarrier(&matMat);
-      MONSEL_MaterialScatterModelT matMSM(&matMat, &matBarrier);
-      matMSM.addScatterMechanism(&matElastic);
-      matMSM.addScatterMechanism(&matInel);
-      matMSM.setCSD(&matCSD);
-
-      // === Precipitate scatter model ===
+      // === Precipitate material ===
       double precPotU = -precip.workfun - precip.efermi;
       CompositionT precComp;
       precComp.defineByMoleFraction(precip.elements.data(), (int)precip.elements.size(),
@@ -433,59 +425,31 @@ namespace CompositeImage
       precMat.setBandgap(ToSI::eV(precip.bandgap));
       precMat.setEnergyCBbottom(ToSI::eV(precPotU));
 
-      SelectableElasticSMT precElastic(precMat, NISTMottRS::Factory);
-      JoyLuoNieminenCSDT   precCSD(precMat, ToSI::eV(precip.breakEeV));
-      FittedInelSMT        precInel(precMat, ToSI::eV(precip.energySEgen), precCSD);
-      ExpQMBarrierSMT      precBarrier(&precMat);
-      MONSEL_MaterialScatterModelT precMSM(&precMat, &precBarrier);
-      precMSM.addScatterMechanism(&precElastic);
-      precMSM.addScatterMechanism(&precInel);
-      precMSM.setCSD(&precCSD);
-
       // === Vacuum ===
       SEmaterialT vacMat;
       vacMat.setName("vacuum");
-      ExpQMBarrierSMT              vacBarrier(&vacMat);
-      MONSEL_MaterialScatterModelT vacMSM(&vacMat, &vacBarrier);
 
-      // === Geometry ===
-      NullMaterialScatterModelT NULL_MSM;
-      const double origin[] = { 0., 0., 0. };
-      SphereT chamberSphere(origin, MonteCarloSS::ChamberRadius);
-      RegionT chamber(nullptr, &NULL_MSM, &chamberSphere);
-      chamber.updateMaterial(*chamber.getScatterModel(), vacMSM);
-
+      // === Geometry constants (used to build per-thread regions in parallel loop) ===
+      // NormalMultiPlaneShape stores its last-computed normal as mutable state, so it
+      // cannot be shared across threads.
+      const double origin[]     = { 0., 0., 0. };
       const double normalvec[]  = { 0., 0., -1. };
       const double surfacePos[] = { 0., 0.,  0. };
-      NormalMultiPlaneShapeT surface;
-      PlaneT pl(normalvec, 3, surfacePos, 3);
-      surface.addPlane(pl);
-      RegionT bulkRegion(&chamber, &matMSM, (NormalShapeT*)&surface);
-
-      // Precipitate sphere — self-registers into bulkRegion.mSubRegions on construction.
-      // center_depth_nm = 0 → centroid on surface → lower hemisphere is precipitate material,
-      // upper hemisphere is in vacuum and the region is simply never entered.
       const double precipCenter[] = {
-         config.precipitate.centerXNm    * 1.e-9,
-         config.precipitate.centerYNm    * 1.e-9,
+         config.precipitate.centerXNm     * 1.e-9,
+         config.precipitate.centerYNm     * 1.e-9,
          config.precipitate.centerDepthNm * 1.e-9
       };
       double precipRadius = config.precipitate.radiusNm * 1.e-9;
-      SphereT precipSphere(precipCenter, precipRadius);
-      RegionT precipRegion(&bulkRegion, &precMSM, &precipSphere);
 
-      // === Beam ===
+      // === Beam parameters ===
       double beamE    = ToSI::eV(config.beamEnergyEv);
       double beamsize = config.beamSizeNm * 1.e-9;
-      GaussianBeamT eg(beamsize, beamE, origin);
-
-      MonteCarloSS::MonteCarloSS monte(&eg, &chamber, eg.createElectron());
 
       int    nbins   = (int)(config.beamEnergyEv / config.histogramBinSizeEv);
       if (nbins < 1) nbins = 1;
 
       // === Build scan grid ===
-      // x and y positions in metres
       int nx = config.scan.nxPixels;
       int ny = config.scan.nyPixels;
       double hw   = config.scan.halfWidthNm * 1.e-9;
@@ -495,7 +459,6 @@ namespace CompositeImage
       double dym  = (ny > 1) ? (2.0 * hw / (ny - 1)) : 0.0;
 
       // Results: row 0 = +halfWidthNm (top of image), row ny-1 = -halfWidthNm (bottom).
-      // This matches typical SEM image orientation (positive y at top).
       std::vector<std::vector<double>> seMap (ny, std::vector<double>(nx, 0.0));
       std::vector<std::vector<double>> bseMap(ny, std::vector<double>(nx, 0.0));
 
@@ -503,49 +466,89 @@ namespace CompositeImage
       if (!csvFile.good()) throw std::runtime_error("Unable to open composite_image output file: " + config.outputCsv);
       csvFile << "x_nm,y_nm,SE_yield,BSE_yield,total_yield\n";
 
-      auto wallStart = std::chrono::system_clock::now();
-      int totalPixels = nx * ny;
-      int pixelsDone  = 0;
+      auto wallStart  = std::chrono::system_clock::now();
+      int  totalPixels = nx * ny;
+      int  pixelsDone  = 0;
 
-      for (int row = 0; row < ny; ++row) {
-         // row 0 → y = +halfWidthNm, row ny-1 → y = -halfWidthNm
-         double y = cy + hw - row * dym;
-         for (int col = 0; col < nx; ++col) {
-            double x = cx - hw + col * dxm;
+      printf("  Using %d OpenMP thread(s)\n", omp_get_max_threads()); fflush(stdout);
 
-            double egCenter[] = { x, y, -1.e-9 };
-            eg.setCenter(egCenter);
+      #pragma omp parallel for schedule(dynamic) shared(seMap, bseMap, pixelsDone)
+      for (int px = 0; px < totalPixels; ++px) {
+         int    row = px / nx;
+         int    col = px % nx;
+         double x   = cx - hw + col * dxm;
+         double y   = cy + hw - row * dym;
 
-            BackscatterStatsT back(monte, nbins);
-            monte.addActionListener(back);
+         // Per-worker scatter models.
+         // MONSEL_MaterialScatterModel caches scatter rates in mutable member
+         // state (cached_eK, cached_cumulativeScatterRate) and SelectableElasticSM
+         // also caches cached_kE; neither is safe to share across threads.
+         // Material property objects (matMat, precMat, vacMat) and the static
+         // cross-section tables are shared read-only and are safe.
+         SelectableElasticSMT         matElastic_t(matMat, NISTMottRS::Factory);
+         JoyLuoNieminenCSDT           matCSD_t(matMat, ToSI::eV(matrix.breakEeV));
+         FittedInelSMT                matInel_t(matMat, ToSI::eV(matrix.energySEgen), matCSD_t);
+         ExpQMBarrierSMT              matBarrier_t(&matMat);
+         MONSEL_MaterialScatterModelT matMSM_t(&matMat, &matBarrier_t);
+         matMSM_t.addScatterMechanism(&matElastic_t);
+         matMSM_t.addScatterMechanism(&matInel_t);
+         matMSM_t.setCSD(&matCSD_t);
 
-            monte.runMultipleTrajectories(config.trajectoriesPerPixel);
+         SelectableElasticSMT         precElastic_t(precMat, NISTMottRS::Factory);
+         JoyLuoNieminenCSDT           precCSD_t(precMat, ToSI::eV(precip.breakEeV));
+         FittedInelSMT                precInel_t(precMat, ToSI::eV(precip.energySEgen), precCSD_t);
+         ExpQMBarrierSMT              precBarrier_t(&precMat);
+         MONSEL_MaterialScatterModelT precMSM_t(&precMat, &precBarrier_t);
+         precMSM_t.addScatterMechanism(&precElastic_t);
+         precMSM_t.addScatterMechanism(&precInel_t);
+         precMSM_t.setCSD(&precCSD_t);
 
-            const HistogramT& hist = back.backscatterEnergyHistogram();
-            double ePerBin  = config.beamEnergyEv / hist.binCount();
-            int    maxSEbin = (int)(config.seThresholdEv / ePerBin);
-            int    totalSE  = 0;
-            for (int j = 0; j < maxSEbin && j < (int)hist.binCount(); ++j)
-               totalSE += hist.counts(j);
+         ExpQMBarrierSMT              vacBarrier_t(&vacMat);
+         MONSEL_MaterialScatterModelT vacMSM_t(&vacMat, &vacBarrier_t);
 
-            double SEY   = (double)totalSE / config.trajectoriesPerPixel;
-            double BSEY  = back.backscatterFraction() - SEY;
-            double total = back.backscatterFraction();
+         // Per-thread geometry; NormalMultiPlaneShape has mutable stored-normal state.
+         SphereT                chamberSphere_t(origin, MonteCarloSS::ChamberRadius);
+         NullMaterialScatterModelT nullMSM_t;
+         RegionT                chamber_t(nullptr, &nullMSM_t, &chamberSphere_t);
+         chamber_t.updateMaterial(*chamber_t.getScatterModel(), vacMSM_t);
 
-            seMap [row][col] = SEY;
-            bseMap[row][col] = BSEY;
+         NormalMultiPlaneShapeT surface_t;
+         PlaneT                 pl_t(normalvec, 3, surfacePos, 3);
+         surface_t.addPlane(pl_t);
+         RegionT                bulkRegion_t(&chamber_t, &matMSM_t, (NormalShapeT*)&surface_t);
 
-            double xnm = x * 1.e9;
-            double ynm = y * 1.e9;
-            csvFile << xnm << "," << ynm << "," << SEY << "," << BSEY << "," << total << "\n";
-            csvFile.flush();
+         SphereT                precipSphere_t(precipCenter, precipRadius);
+         RegionT                precipRegion_t(&bulkRegion_t, &precMSM_t, &precipSphere_t);
 
-            monte.removeActionListener(back);
+         double        egCenter[] = { x, y, -1.e-9 };
+         GaussianBeamT eg_t(beamsize, beamE, origin);
+         eg_t.setCenter(egCenter);
 
+         MonteCarloSS::MonteCarloSS monte_t(&eg_t, &chamber_t, eg_t.createElectron());
+         BackscatterStatsT          back_t(monte_t, nbins);
+         monte_t.addActionListener(back_t);
+         monte_t.runMultipleTrajectories(config.trajectoriesPerPixel);
+         monte_t.removeActionListener(back_t);
+
+         const HistogramT& hist   = back_t.backscatterEnergyHistogram();
+         double ePerBin  = config.beamEnergyEv / hist.binCount();
+         int    maxSEbin = (int)(config.seThresholdEv / ePerBin);
+         int    totalSE  = 0;
+         for (int j = 0; j < maxSEbin && j < (int)hist.binCount(); ++j)
+            totalSE += hist.counts(j);
+
+         double SEY  = (double)totalSE / config.trajectoriesPerPixel;
+         double BSEY = back_t.backscatterFraction() - SEY;
+
+         seMap [row][col] = SEY;   // unique cell per thread, no race
+         bseMap[row][col] = BSEY;
+
+         #pragma omp critical(progress)
+         {
             ++pixelsDone;
             if (pixelsDone % 10 == 0 || pixelsDone == totalPixels) {
                printf("  pixel %d/%d  (x=%.1f nm, y=%.1f nm)  SE=%.4f  BSE=%.4f\n",
-                      pixelsDone, totalPixels, xnm, ynm, SEY, BSEY);
+                      pixelsDone, totalPixels, x * 1.e9, y * 1.e9, SEY, BSEY);
                fflush(stdout);
             }
          }
@@ -555,6 +558,16 @@ namespace CompositeImage
       std::chrono::duration<double> elapsed = wallEnd - wallStart;
       printf("\nCompositeImage: scan complete in %.1f s\n", elapsed.count()); fflush(stdout);
 
+      // Write CSV in scan order (row-major) after the parallel section.
+      for (int row = 0; row < ny; ++row) {
+         for (int col = 0; col < nx; ++col) {
+            double x     = cx - hw + col * dxm;
+            double y     = cy + hw - row * dym;
+            double total = seMap[row][col] + bseMap[row][col];
+            csvFile << x * 1.e9 << "," << y * 1.e9 << ","
+                    << seMap[row][col] << "," << bseMap[row][col] << "," << total << "\n";
+         }
+      }
       csvFile.close();
 
       if (!config.outputPgmSE.empty()) {

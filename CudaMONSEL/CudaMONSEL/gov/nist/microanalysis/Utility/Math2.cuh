@@ -2,8 +2,9 @@
 #define _MATH_2_CUH_
 
 #include "gov\nist\microanalysis\NISTMonte\Declarations.cuh"
-#include <cstdlib> 
+#include <cstdlib>
 #include <ctime>
+#include <limits>
 
 namespace Math2
 {

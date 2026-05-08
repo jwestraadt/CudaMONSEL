@@ -1,6 +1,10 @@
 #include "Math2.cuh"
 
 #include <math.h>
+#include <cstdint>
+#include <functional>
+#include <random>
+#include <thread>
 
 namespace Math2
 {
@@ -1325,21 +1329,31 @@ namespace Math2
    //      throw new EPQException("Maximum iteration count exceeded in Math2.rootFind");
    //   }
 
+   static std::mt19937_64& threadRng()
+   {
+      // Each thread gets a uniquely seeded generator on first use.
+      thread_local std::mt19937_64 rng(
+         std::hash<std::thread::id>{}(std::this_thread::get_id())
+         ^ (static_cast<uint64_t>(std::random_device{}()) << 16));
+      return rng;
+   }
+
    double random()
    {
-      return (double)rand() / RAND_MAX;
+      thread_local std::uniform_real_distribution<double> dist(0.0, 1.0);
+      return dist(threadRng());
    }
 
    int randomInt(int mod)
    {
-      return rand() % mod;
+      return static_cast<int>(threadRng()() % static_cast<uint64_t>(mod));
    }
 
    double expRand()
    {
-      double r = (double)rand() / RAND_MAX;
-      while (r <= 0 || r >= 1) r = (double)rand() / RAND_MAX;
-      return -::log(r);
+      thread_local std::uniform_real_distribution<double> dist(
+         std::numeric_limits<double>::min(), 1.0);
+      return -::log(dist(threadRng()));
    }
 
    double toRadians(double deg)
@@ -1349,24 +1363,7 @@ namespace Math2
 
    double generateGaussianNoise(const double mean, const double stdDev)
    {
-      static bool hasSpare = false;
-      static double spare;
-
-      if (hasSpare) {
-         hasSpare = false;
-         return mean + stdDev * spare;
-      }
-
-      hasSpare = true;
-      static double u, v, s;
-      do {
-         u = (rand() / ((double)RAND_MAX)) * 2.0 - 1.0;
-         v = (rand() / ((double)RAND_MAX)) * 2.0 - 1.0;
-         s = u * u + v * v;
-      }
-      while ((s >= 1.0) || (s == 0.0));
-      s = sqrt(-2.0 * log(s) / s);
-      spare = v * s;
-      return mean + stdDev * u * s;
+      thread_local std::normal_distribution<double> dist(0.0, 1.0);
+      return mean + stdDev * dist(threadRng());
    }
 }
