@@ -37,6 +37,8 @@
 
 #include "gov\nist\nanoscalemetrology\JMONSELTests\LinesOnLayers.cuh"
 #include "gov\nist\nanoscalemetrology\JMONSELTests\BulkYield.cuh"
+#include "gov\nist\nanoscalemetrology\JMONSELTests\CompositeYield.cuh"
+#include "gov\nist\nanoscalemetrology\JMONSELTests\CompositeImage.cuh"
 
 #include "ImageUtil.h"
 #include "RuntimeInput.cuh"
@@ -146,6 +148,14 @@ static void runConfiguredSimulation(const RuntimeInput::JsonValue& simulation)
    if (type == "bulk_yield" || type == "bulk-yield" || type == "bulkyield") {
       printf("SIMULATION: bulk_yield\n"); fflush(stdout);
       BulkYield::run(simulation);
+   }
+   else if (type == "composite_yield" || type == "composite-yield" || type == "compositeyield") {
+      printf("SIMULATION: composite_yield\n"); fflush(stdout);
+      CompositeYield::run(simulation);
+   }
+   else if (type == "composite_image" || type == "composite-image" || type == "compositeimage") {
+      printf("SIMULATION: composite_image\n"); fflush(stdout);
+      CompositeImage::run(simulation);
    }
    else if (type == "lines_on_layers" || type == "lines-on-layers" || type == "linesonlayers") {
       printf("SIMULATION: lines_on_layers\n"); fflush(stdout);

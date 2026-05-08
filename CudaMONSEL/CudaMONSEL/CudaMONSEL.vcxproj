@@ -93,6 +93,8 @@
     <CudaCompile Include="gov\nist\microanalysis\Utility\Transform3D.cu" />
     <CudaCompile Include="gov\nist\microanalysis\Utility\UncertainValue2.cu" />
     <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELTests\BulkYield.cu" />
+    <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELTests\CompositeYield.cu" />
+    <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELTests\CompositeImage.cu" />
     <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELTests\LinesOnLayers.cu" />
     <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELutils\NULagrangeInterpolation.cu" />
     <CudaCompile Include="gov\nist\nanoscalemetrology\JMONSELutils\ULagrangeInterpolation.cu" />
@@ -203,6 +205,8 @@
     <ClInclude Include="gov\nist\microanalysis\Utility\Transform3D.cuh" />
     <ClInclude Include="gov\nist\microanalysis\Utility\UncertainValue2.cuh" />
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELTests\BulkYield.cuh" />
+    <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELTests\CompositeYield.cuh" />
+    <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELTests\CompositeImage.cuh" />
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELTests\LinesOnLayers.cuh" />
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELutils\NULagrangeInterpolation.cuh" />
     <ClInclude Include="gov\nist\nanoscalemetrology\JMONSELutils\ULagrangeInterpolation.cuh" />
