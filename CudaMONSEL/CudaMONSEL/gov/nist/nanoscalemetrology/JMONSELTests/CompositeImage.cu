@@ -36,6 +36,7 @@
 
 #include <fstream>
 #include <chrono>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -73,6 +74,13 @@ namespace CompositeImage
       double centerDepthNm;
    };
 
+   struct SurfaceLayerConfig
+   {
+      bool       enabled;
+      double     thicknessNm;
+      PhaseConfig phase;
+   };
+
    struct ScanConfig
    {
       double centerXNm;    // scan center x (usually = precipitate centerXNm)
@@ -95,11 +103,12 @@ namespace CompositeImage
       double      beamSizeNm;
       double      seThresholdEv;
       double      histogramBinSizeEv;
-      ScatteringConfig  scattering;
-      PhaseConfig       matrixPhase;
-      PhaseConfig       precipitatePhase;
-      PrecipitateConfig precipitate;
-      ScanConfig        scan;
+      ScatteringConfig   scattering;
+      PhaseConfig        matrixPhase;
+      PhaseConfig        precipitatePhase;
+      PrecipitateConfig  precipitate;
+      ScanConfig         scan;
+      SurfaceLayerConfig surfaceLayer;
    };
 
    static void addElement(PhaseConfig& phase, const ElementT* element, double fraction)
@@ -167,6 +176,9 @@ namespace CompositeImage
       config.scan.halfWidthNm = 90.0;           // 180 nm field of view
       config.scan.nxPixels   = 64;
       config.scan.nyPixels   = 64;
+
+      config.surfaceLayer.enabled     = false;
+      config.surfaceLayer.thicknessNm = 0.0;
 
       return config;
    }
@@ -354,6 +366,13 @@ namespace CompositeImage
       const RuntimeInput::JsonValue* scanJson = src.find("scan");
       if (scanJson) config.scan = readScanConfig(*scanJson, config.scan);
 
+      const RuntimeInput::JsonValue* slJson = findAny(src, "surface_layer", "surface_film", "contamination_layer");
+      if (slJson && slJson->isObject()) {
+         config.surfaceLayer.enabled     = true;
+         config.surfaceLayer.thicknessNm = requireNumber(*slJson, "thickness_nm");
+         config.surfaceLayer.phase       = readPhaseConfig(*slJson, "surface_layer");
+      }
+
       if (config.trajectoriesPerPixel <= 0) throw std::runtime_error("composite_image trajectories_per_pixel must be positive");
       if (config.beamEnergyEv <= 0.0)       throw std::runtime_error("composite_image beam_energy_ev must be positive");
       if (config.scan.nxPixels <= 0 || config.scan.nyPixels <= 0)
@@ -362,6 +381,8 @@ namespace CompositeImage
       if (config.precipitate.radiusNm <= 0.0) throw std::runtime_error("composite_image precipitate radius_nm must be positive");
       if (config.precipitate.centerDepthNm <= -config.precipitate.radiusNm)
          throw std::runtime_error("composite_image precipitate center_depth_nm must be > -radius_nm (sphere is entirely above the surface)");
+      if (config.surfaceLayer.enabled && config.surfaceLayer.thicknessNm <= 0.0)
+         throw std::runtime_error("composite_image surface_layer thickness_nm must be positive");
 
       return config;
    }
@@ -401,6 +422,8 @@ namespace CompositeImage
    {
       PhaseConfig matrix = config.matrixPhase;
       PhaseConfig precip = config.precipitatePhase;
+      bool   hasSL        = config.surfaceLayer.enabled;
+      double slThicknessM = hasSL ? config.surfaceLayer.thicknessNm * 1.e-9 : 0.0;
 
       printf("\nCompositeImage: %s\n", config.name.c_str()); fflush(stdout);
       printf("  Matrix: %s  /  Precipitate: %s\n", matrix.name.c_str(), precip.name.c_str()); fflush(stdout);
@@ -410,6 +433,11 @@ namespace CompositeImage
       printf("  Scan: %dx%d pixels, ±%.1f nm FOV, %.0f eV beam, %d traj/pixel\n",
              config.scan.nxPixels, config.scan.nyPixels, config.scan.halfWidthNm,
              config.beamEnergyEv, config.trajectoriesPerPixel); fflush(stdout);
+      if (hasSL)
+         printf("  Surface layer: %s  %.3f nm  density=%.0f kg/m3  phi=%.2f eV\n",
+                config.surfaceLayer.phase.name.c_str(), config.surfaceLayer.thicknessNm,
+                config.surfaceLayer.phase.density, config.surfaceLayer.phase.workfun);
+      fflush(stdout);
 
       // === Matrix material ===
       double matPotU = -matrix.workfun - matrix.efermi;
@@ -434,6 +462,21 @@ namespace CompositeImage
       // === Vacuum ===
       SEmaterialT vacMat;
       vacMat.setName("vacuum");
+
+      // === Surface layer material (optional — e.g. carbon contamination) ===
+      // Keep slCompPtr and slMatPtr alive for the whole parallel loop (shared read-only).
+      std::unique_ptr<CompositionT> slCompPtr;
+      std::unique_ptr<SEmaterialT>  slMatPtr;
+      if (hasSL) {
+         PhaseConfig sl = config.surfaceLayer.phase;   // copy so .data() is non-const
+         slCompPtr = std::make_unique<CompositionT>();
+         slCompPtr->defineByMoleFraction(sl.elements.data(), (int)sl.elements.size(),
+                                         sl.fractions.data(), (int)sl.fractions.size());
+         slMatPtr = std::make_unique<SEmaterialT>(*slCompPtr, sl.density);
+         slMatPtr->setWorkfunction(ToSI::eV(sl.workfun));
+         slMatPtr->setBandgap(ToSI::eV(sl.bandgap));
+         slMatPtr->setEnergyCBbottom(ToSI::eV(-sl.workfun - sl.efermi));
+      }
 
       // === Geometry constants (used to build per-thread regions in parallel loop) ===
       // NormalMultiPlaneShape stores its last-computed normal as mutable state, so it
@@ -514,24 +557,55 @@ namespace CompositeImage
          ExpQMBarrierSMT              vacBarrier_t(&vacMat);
          MONSEL_MaterialScatterModelT vacMSM_t(&vacMat, &vacBarrier_t);
 
+         // Per-thread surface layer scatter models (only constructed when hasSL).
+         std::unique_ptr<SelectableElasticSMT>         slElastic_up;
+         std::unique_ptr<JoyLuoNieminenCSDT>           slCSD_up;
+         std::unique_ptr<FittedInelSMT>                slInel_up;
+         std::unique_ptr<ExpQMBarrierSMT>              slBarrier_up;
+         std::unique_ptr<MONSEL_MaterialScatterModelT> slMSM_up;
+         if (hasSL) {
+            const PhaseConfig& sl = config.surfaceLayer.phase;
+            slElastic_up = std::make_unique<SelectableElasticSMT>(*slMatPtr, NISTMottRS::Factory);
+            slCSD_up     = std::make_unique<JoyLuoNieminenCSDT>(*slMatPtr, ToSI::eV(sl.breakEeV));
+            slInel_up    = std::make_unique<FittedInelSMT>(*slMatPtr, ToSI::eV(sl.energySEgen), *slCSD_up);
+            slBarrier_up = std::make_unique<ExpQMBarrierSMT>(slMatPtr.get());
+            slMSM_up     = std::make_unique<MONSEL_MaterialScatterModelT>(slMatPtr.get(), slBarrier_up.get());
+            slMSM_up->addScatterMechanism(slElastic_up.get());
+            slMSM_up->addScatterMechanism(slInel_up.get());
+            slMSM_up->setCSD(slCSD_up.get());
+         }
+
          // Per-thread geometry; NormalMultiPlaneShape has mutable stored-normal state.
          SphereT                chamberSphere_t(origin, MonteCarloSS::ChamberRadius);
          NullMaterialScatterModelT nullMSM_t;
          RegionT                chamber_t(nullptr, &nullMSM_t, &chamberSphere_t);
          chamber_t.updateMaterial(*chamber_t.getScatterModel(), vacMSM_t);
 
+         // Optional surface layer: occupies the half-space z > -slThicknessM.
+         // bulkRegion becomes a child of the surface layer rather than of chamber.
+         double                 slSurfPos[] = { 0.0, 0.0, -slThicknessM };
+         NormalMultiPlaneShapeT slSurface_t;
+         std::unique_ptr<RegionT> slRegion_up;
+         if (hasSL) {
+            PlaneT slPl_t(normalvec, 3, slSurfPos, 3);
+            slSurface_t.addPlane(slPl_t);
+            slRegion_up = std::make_unique<RegionT>(&chamber_t, slMSM_up.get(), (NormalShapeT*)&slSurface_t);
+         }
+
          NormalMultiPlaneShapeT surface_t;
          PlaneT                 pl_t(normalvec, 3, surfacePos, 3);
          surface_t.addPlane(pl_t);
-         RegionT                bulkRegion_t(&chamber_t, &matMSM_t, (NormalShapeT*)&surface_t);
+         RegionT*               bulkParent = hasSL ? slRegion_up.get() : &chamber_t;
+         RegionT                bulkRegion_t(bulkParent, &matMSM_t, (NormalShapeT*)&surface_t);
 
          SphereT                precipSphere_t(precipCenter, precipRadius);
          RegionT                precipRegion_t(&bulkRegion_t, &precMSM_t, &precipSphere_t);
 
-         // Start beam above the sphere's topmost point (precipCenter[2] - precipRadius)
-         // so the initial region lookup never places the electron inside the sphere.
+         // Start beam above: the sphere apex, and (when a surface layer is present)
+         // above the top of that layer, so the initial region lookup is always vacuum.
+         double        minBeamZ   = hasSL ? (-slThicknessM - 1.e-9) : -1.e-9;
          double        beamStartZ = (precipCenter[2] - precipRadius) - 5.e-9;
-         if (beamStartZ > -1.e-9) beamStartZ = -1.e-9;
+         if (beamStartZ > minBeamZ) beamStartZ = minBeamZ;
          double        egCenter[] = { x, y, beamStartZ };
          GaussianBeamT eg_t(beamsize, beamE, origin);
          eg_t.setCenter(egCenter);
