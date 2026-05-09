@@ -58,7 +58,7 @@
         "work_function_ev": 4.6,
         "fermi_energy_ev": 7.5,
         "bandgap_ev": 0.0,
-        "secondary_generation_energy_ev": 20.0,
+        "secondary_generation_energy_ev": 25.0,
         "break_energy_ev": 45.0,
         "composition": {
           "Ni": 75.0,

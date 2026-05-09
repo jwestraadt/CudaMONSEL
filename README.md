@@ -67,6 +67,7 @@ cd CudaMONSEL\CudaMONSEL
 The runtime JSON format uses a `simulations` array. Each entry has a `type` field. Supported runtime types are:
 
 - `bulk_yield`: fully configurable from JSON, including trajectory count, beam energies, output CSV, and phase material properties.
+- `composite_image`: 2D raster scan of a spherical precipitate in a bulk matrix, producing per-pixel SE (with SE1/SE2 split), and BSE yield maps as CSV and PGM files.
 - `lines_on_layers`: dispatches the existing hard-coded lines-on-layers simulation.
 - `self_tests`: runs the built-in test suite.
 
@@ -268,6 +269,96 @@ Alternatively, an `elements` array may be used with explicit `symbol` and `fract
 4. For metals keep `bandgap_ev` at `0` and `secondary_generation_energy_ev` at `~30`; for insulators/organics use `~65`.
 5. Start with a low `trajectories` count (500–1000) to verify setup, then increase to 5000+ for production statistics.
 6. Adjust `beam_energies_ev` to cover the energy range relevant to your SEM operating conditions.
+
+## CompositeImage Example
+
+`CompositeImage` raster-scans a focused electron beam across a 2D pixel grid centred on a spherical precipitate embedded in a bulk matrix phase. At each pixel it runs `trajectories_per_pixel` Monte Carlo trajectories and records the per-pixel SE, BSE, SE1, and SE2 yields.
+
+**SE1 vs SE2:** secondary electrons generated while the primary electron travels *into* the sample (`cos θ > 0`) are classified SE1; those generated while the primary is exiting or backscattered are SE2. This split follows the conventional Seiler definition and is useful for studying surface-sensitivity and contrast mechanisms in SEM images of multi-phase materials.
+
+### Running the included example
+
+```powershell
+cd CudaMONSEL\CudaMONSEL
+..\x64\Release\CudaMONSEL.exe gamma_precipitate_image_1kV.json
+```
+
+Progress is printed per pixel to stdout. On completion the following files are written (paths relative to the working directory):
+
+| File | Content |
+|---|---|
+| `output_csv` | Per-pixel yields: `x_nm,y_nm,SE_yield,SE1_yield,SE2_yield,BSE_yield,total_yield` |
+| `output_pgm_se` | Greyscale PGM image of total SE yield |
+| `output_pgm_se1` | Greyscale PGM image of SE1 yield (optional) |
+| `output_pgm_se2` | Greyscale PGM image of SE2 yield (optional) |
+| `output_pgm_bse` | Greyscale PGM image of BSE yield (optional) |
+
+### composite_image JSON reference
+
+#### Simulation-level fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `type` | string | — | Must be `"composite_image"` |
+| `name` | string | — | Label used in console output |
+| `enabled` | boolean | `true` | Set to `false` to skip without removing |
+| `output_csv` | string | — | CSV output path |
+| `output_pgm_se` | string | — | PGM path for total SE yield map |
+| `output_pgm_se1` | string | *(omit to disable)* | PGM path for SE1 yield map |
+| `output_pgm_se2` | string | *(omit to disable)* | PGM path for SE2 yield map |
+| `output_pgm_bse` | string | *(omit to disable)* | PGM path for BSE yield map |
+| `beam_energy_ev` | number | — | Incident beam energy in eV |
+| `beam_size_nm` | number | `0.5` | Gaussian beam 1-sigma radius in nm |
+| `trajectories_per_pixel` | integer | `100` | Trajectories launched per pixel |
+| `secondary_electron_threshold_ev` | number | `50.0` | SE/BSE energy threshold in eV |
+| `histogram_bin_size_ev` | number | `10.0` | Energy bin width for the exit-energy histogram |
+
+#### scan
+
+Defines the pixel grid. The scan is centred at (`center_x_nm`, `center_y_nm`) with a square half-width of `half_width_nm` nm.
+
+```json
+"scan": {
+  "center_x_nm": 0.0,
+  "center_y_nm": 0.0,
+  "half_width_nm": 90.0,
+  "nx_pixels": 64,
+  "ny_pixels": 64
+}
+```
+
+#### matrix_phase and precipitate_phase
+
+Both use the same material parameter fields as the `bulk_yield` `phases` entries (see [phases — material parameters](#phases--material-parameters) above).
+
+#### precipitate
+
+Defines the embedded spherical precipitate geometry.
+
+| Field | Description |
+|---|---|
+| `shape` | Must be `"sphere"` |
+| `radius_nm` | Sphere radius in nm |
+| `center_depth_nm` | Depth of sphere centre below the surface in nm; `0` places the centre at the surface |
+| `center_x_nm` | Lateral X position of the sphere centre in nm |
+| `center_y_nm` | Lateral Y position of the sphere centre in nm |
+
+#### Full example — Ni gamma/gamma-prime precipitate at 1 kV
+
+See `CudaMONSEL/CudaMONSEL/gamma_precipitate_image_1kV.json` for the full working example. Key values:
+
+```json
+{
+  "type": "composite_image",
+  "beam_energy_ev": 1000.0,
+  "trajectories_per_pixel": 1000,
+  "output_pgm_se1": "gamma_precipitate_image_1kV_SE1.pgm",
+  "output_pgm_se2": "gamma_precipitate_image_1kV_SE2.pgm",
+  "matrix_phase":      { "name": "gamma",       "secondary_generation_energy_ev": 30.0, "..." : "..." },
+  "precipitate_phase": { "name": "gamma_prime",  "secondary_generation_energy_ev": 25.0, "..." : "..." },
+  "precipitate": { "shape": "sphere", "radius_nm": 30.0, "center_depth_nm": 0.0 }
+}
+```
 
 ## Setting Up A New Simulation
 
