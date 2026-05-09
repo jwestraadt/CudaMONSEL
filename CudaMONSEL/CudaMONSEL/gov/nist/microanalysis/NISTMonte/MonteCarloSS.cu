@@ -166,6 +166,9 @@ namespace MonteCarloSS
    {
       double mMinEnergy = newElectron->getCurrentRegion()->getScatterModel()->getMinEforTracking();
       if (newElectron->getEnergy() > mMinEnergy) {
+         // cos(theta) > 0: parent going into sample → SE1; coming out → SE2.
+         newElectron->setType(::cos(mElectron->getTheta()) > 0.0
+            ? ElectronT::SE1 : ElectronT::SE2);
          fireEvent(StartSecondaryEvent);
          mElectronStack.push(mElectron);
          mElectron = newElectron;

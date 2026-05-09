@@ -8,11 +8,13 @@
       "enabled": true,
       "output_csv": "gamma_precipitate_image_1kV.csv",
       "output_pgm_se": "gamma_precipitate_image_1kV_SE.pgm",
+      "output_pgm_se1": "gamma_precipitate_image_1kV_SE1.pgm",
+      "output_pgm_se2": "gamma_precipitate_image_1kV_SE2.pgm",
       "output_pgm_bse": "gamma_precipitate_image_1kV_BSE.pgm",
 
       "beam_energy_ev": 1000.0,
       "beam_size_nm": 0.5,
-      "trajectories_per_pixel": 200,
+      "trajectories_per_pixel": 1000,
       "secondary_electron_threshold_ev": 50.0,
       "histogram_bin_size_ev": 10.0,
 
@@ -52,11 +54,11 @@
 
       "precipitate_phase": {
         "name": "gamma_prime",
-        "density_kg_m3": 8200.0,
-        "work_function_ev": 4.9,
+        "density_kg_m3": 7700.0,
+        "work_function_ev": 4.6,
         "fermi_energy_ev": 7.5,
         "bandgap_ev": 0.0,
-        "secondary_generation_energy_ev": 30.0,
+        "secondary_generation_energy_ev": 25.0,
         "break_energy_ev": 45.0,
         "composition": {
           "Ni": 75.0,

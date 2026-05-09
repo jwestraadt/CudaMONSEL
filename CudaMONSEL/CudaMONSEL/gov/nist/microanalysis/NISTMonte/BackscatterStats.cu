@@ -4,6 +4,7 @@
 #include "gov\nist\microanalysis\NISTMonte\MonteCarloSS.cuh"
 #include "gov\nist\microanalysis\NISTMonte\Electron.cuh"
 #include "gov\nist\microanalysis\Utility\Histogram.cuh"
+#include "gov\nist\microanalysis\Utility\Math2.cuh"
 
 namespace BackscatterStats
 {
@@ -100,7 +101,9 @@ namespace BackscatterStats
       mElevationBins(new HistogramT(0.0, Math2::PI, 180)),
       mAzimuthalBins(new HistogramT(0.0, 2.0 * Math2::PI, 360)),
       mFwdEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
-      mBackEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount))
+      mBackEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
+      mSE1EnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
+      mSE2EnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount))
    {
    }
 
@@ -113,7 +116,9 @@ namespace BackscatterStats
       mElevationBins(new HistogramT(0.0, Math2::PI, 180)),
       mAzimuthalBins(new HistogramT(0.0, 2.0 * Math2::PI, 360)),
       mFwdEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
-      mBackEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount))
+      mBackEnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
+      mSE1EnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount)),
+      mSE2EnergyBins(new HistogramT(0.0, mBeamEnergy, mEnergyBinCount))
    {
    }
 
@@ -121,6 +126,8 @@ namespace BackscatterStats
    {
       delete mFwdEnergyBins;
       delete mBackEnergyBins;
+      delete mSE1EnergyBins;
+      delete mSE2EnergyBins;
       delete mAzimuthalBins;
       delete mElevationBins;
    }
@@ -132,8 +139,8 @@ namespace BackscatterStats
       mAzimuthalBins->clear();
       mFwdEnergyBins->clear();
       mBackEnergyBins->clear();
-      //mFwdEnergyBins = new HistogramT(0.0, mBeamEnergy, mEnergyBinCount);
-      //mBackEnergyBins = new HistogramT(0.0, mBeamEnergy, mEnergyBinCount);
+      mSE1EnergyBins->clear();
+      mSE2EnergyBins->clear();
       mLog.clear();
    }
 
@@ -163,6 +170,10 @@ namespace BackscatterStats
             mFwdEnergyBins->add(kEeV);
          else
             mBackEnergyBins->add(kEeV);
+         if (el.getType() == ElectronT::SE1)
+            mSE1EnergyBins->add(kEeV);
+         else if (el.getType() == ElectronT::SE2)
+            mSE2EnergyBins->add(kEeV);
          if (mLogDetected) {
             mLog.push_back(Datum(el.getIdent(), el.getStepCount(), kEeV, pos.data(), el.getTheta(), el.getPhi()));
          }
@@ -188,6 +199,16 @@ namespace BackscatterStats
    const HistogramT& BackscatterStats::forwardscatterEnergyHistogram() const
    {
       return *mFwdEnergyBins;
+   }
+
+   const HistogramT& BackscatterStats::se1EnergyHistogram() const
+   {
+      return *mSE1EnergyBins;
+   }
+
+   const HistogramT& BackscatterStats::se2EnergyHistogram() const
+   {
+      return *mSE2EnergyBins;
    }
 
    const HistogramT& BackscatterStats::elevationHistogram() const

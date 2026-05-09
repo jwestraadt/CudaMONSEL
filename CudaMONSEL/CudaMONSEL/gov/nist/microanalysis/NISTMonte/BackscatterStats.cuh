@@ -42,6 +42,8 @@ namespace BackscatterStats
 
       const HistogramT& backscatterEnergyHistogram() const;
       const HistogramT& forwardscatterEnergyHistogram() const;
+      const HistogramT& se1EnergyHistogram() const;
+      const HistogramT& se2EnergyHistogram() const;
       const HistogramT& elevationHistogram() const;
       const HistogramT& azimuthalHistogram() const;
 
@@ -61,6 +63,8 @@ namespace BackscatterStats
       double mBeamEnergy; // in eV
       HistogramT* mFwdEnergyBins;
       HistogramT* mBackEnergyBins;
+      HistogramT* mSE1EnergyBins;
+      HistogramT* mSE2EnergyBins;
       HistogramT* mAzimuthalBins;
       HistogramT* mElevationBins;
       int mEventCount;

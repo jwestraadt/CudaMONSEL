@@ -25,6 +25,7 @@ namespace Electron
       mPhi = (phi);
       mStepCount = (0);
       mTrajectoryComplete = (false);
+      mType = PRIMARY;
       ident = (++lastID);
    }
 
@@ -196,5 +197,15 @@ namespace Electron
    long Electron::getParentID() const
    {
       return parentID;
+   }
+
+   Electron::ElectronType Electron::getType() const
+   {
+      return mType;
+   }
+
+   void Electron::setType(ElectronType t)
+   {
+      mType = t;
    }
 }

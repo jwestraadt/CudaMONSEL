@@ -79,12 +79,21 @@ namespace RegionBase
       if ((t <= 1.0) && mParent != NULL)
          base = mParent;
 
-      //if (t <= 1) {
-      //   if (mParent != NULL)
-      //      printf("%s, %s, %.10e\n", mParent->toString().c_str(), mParent->mShape->toString().c_str(), t);
-      //   else
-      //      printf("%.10e\n", t);
-      //}
+      // Check ancestor shape boundaries. A sub-region electron may exit through a
+      // parent's bounding shape (e.g. a sphere precipitate crossing the flat bulk/vacuum
+      // surface) without first hitting its own shape. Walk up the parent chain and take
+      // whichever crossing comes first along the step.
+      {
+         const RegionBase* parentIter = mParent;
+         while (parentIter != nullptr && parentIter->mParent != nullptr) {
+            double parentT = parentIter->mShape->getFirstIntersection(p0, p1);
+            if (parentT <= 1.0 && parentT < t) {
+               t = parentT;
+               base = parentIter->mParent;
+            }
+            parentIter = parentIter->mParent;
+         }
+      }
 
       const RegionBase* res = this;
       for (auto subRegion : mSubRegions) {

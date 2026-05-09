@@ -8,6 +8,8 @@ namespace Electron
    class Electron
    {
    public:
+      enum ElectronType { PRIMARY = 0, SE1 = 1, SE2 = 2 };
+
       Electron(double initialPos[], double kE);
       Electron(double initialPos[], double theta, double phi, double kE);
       Electron(const Electron& parent, double theta, double phi, double kE);
@@ -38,6 +40,8 @@ namespace Electron
       void setTrajectoryComplete(bool trajectoryComplete);
       long getIdent() const;
       long getParentID() const;
+      ElectronType getType() const;
+      void setType(ElectronType t);
 
    private:
       // The x,y & z coordinates of the electron
@@ -68,6 +72,7 @@ namespace Electron
       long ident; // A unique identifying number to assist tracking, final
 
       long parentID = 0; // 0 if from e-gun. Otherwise ID of parent.
+      ElectronType mType;
    };
 
    extern long getlastIdent();
