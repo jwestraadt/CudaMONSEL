@@ -331,6 +331,34 @@ Defines the pixel grid. The scan is centred at (`center_x_nm`, `center_y_nm`) wi
 
 Both use the same material parameter fields as the `bulk_yield` `phases` entries (see [phases — material parameters](#phases--material-parameters) above).
 
+#### surface_layer (optional)
+
+Adds a uniform flat film on top of the substrate, between the vacuum and the bulk matrix. Omit the block entirely to disable (default). The layer material uses the same field set as `matrix_phase`.
+
+| Field | Description |
+|---|---|
+| `thickness_nm` | Layer thickness in nm (must be positive) |
+| `name` | Label for console output |
+| `density_kg_m3`, `work_function_ev`, `fermi_energy_ev`, `bandgap_ev` | Material parameters (same as phase fields) |
+| `secondary_generation_energy_ev`, `break_energy_ev` | Scattering parameters |
+| `composition` | Element fractions object (same syntax as phase `composition`) |
+
+```json
+"surface_layer": {
+  "thickness_nm": 0.2,
+  "name": "carbon",
+  "density_kg_m3": 2200.0,
+  "work_function_ev": 5.0,
+  "fermi_energy_ev": 5.0,
+  "bandgap_ev": 0.0,
+  "secondary_generation_energy_ev": 35.0,
+  "break_energy_ev": 30.0,
+  "composition": { "C": 1.0 }
+}
+```
+
+The region hierarchy becomes `vacuum → carbon layer → bulk matrix → precipitate`. The beam start Z is automatically adjusted to originate above the layer top.
+
 #### precipitate
 
 Defines the embedded spherical precipitate geometry.
