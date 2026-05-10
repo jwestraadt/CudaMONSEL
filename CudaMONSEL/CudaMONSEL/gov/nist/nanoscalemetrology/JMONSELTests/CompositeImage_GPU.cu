@@ -268,7 +268,10 @@ namespace CompositeImageGPU
          }
          else if (region == REGION_PRECIP) {
             considerHit(best, sphereT(p0, p1, geom), REGION_BULK, dir);
-            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
+            // Use dir (electron direction) as the z=0 surface normal to match the CPU
+            // ExpQMBarrierSM fallback: precipSphere is not a NormalShape so CPU uses
+            // nb=n0 (dir), giving cosalpha=1 and unconditional transmission when kE>deltaU.
+            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, dir);
             considerHit(best, chamberT(p0, p1), REGION_NONE, dir);
          }
 
