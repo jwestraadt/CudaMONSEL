@@ -33,9 +33,17 @@
 #include "gov\nist\nanoscalemetrology\JMONSEL\JoyLuoNieminenCSD.cuh"
 #include "gov\nist\nanoscalemetrology\JMONSEL\FittedInelSM.cuh"
 #include "gov\nist\nanoscalemetrology\JMONSEL\NormalMultiPlaneShape.cuh"
+#include "gov\nist\nanoscalemetrology\JMONSELTests\CompositeImage_GPU.cuh"
+#include "gov\nist\microanalysis\EPQLibrary\BrowningEmpiricalCrossSection.cuh"
+#include "gov\nist\microanalysis\EPQLibrary\MeanIonizationPotential.cuh"
+#include "gov\nist\microanalysis\EPQLibrary\NISTMottScatteringAngle.cuh"
+#include "gov\nist\microanalysis\EPQLibrary\PhysicalConstants.cuh"
 
 #include <fstream>
 #include <chrono>
+#include <cmath>
+#include <cstring>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -103,12 +111,32 @@ namespace CompositeImage
       double      beamSizeNm;
       double      seThresholdEv;
       double      histogramBinSizeEv;
+      std::string backend;
+      unsigned long long rngSeed;
       ScatteringConfig   scattering;
       PhaseConfig        matrixPhase;
       PhaseConfig        precipitatePhase;
       PrecipitateConfig  precipitate;
       ScanConfig         scan;
       SurfaceLayerConfig surfaceLayer;
+   };
+
+   class SecondaryCountListener : public ActionListenerT
+   {
+   public:
+      void actionPerformed(const int ae) override
+      {
+         if (ae == MonteCarloSS::StartSecondaryEvent)
+            ++startSecondaryEvents;
+      }
+
+      int generatedSecondaries() const
+      {
+         return startSecondaryEvents / 2;
+      }
+
+   private:
+      int startSecondaryEvents = 0;
    };
 
    static void addElement(PhaseConfig& phase, const ElementT* element, double fraction)
@@ -131,6 +159,8 @@ namespace CompositeImage
       config.beamSizeNm             = 0.5;
       config.seThresholdEv          = 50.0;
       config.histogramBinSizeEv     = 10.0;
+      config.backend                = "auto";
+      config.rngSeed                = 0x5eed1234ULL;
       config.scattering.elastic     = "nist_mott";
       config.scattering.inelastic   = "fitted";
       config.scattering.csd         = "joy_luo_nieminen";
@@ -338,6 +368,8 @@ namespace CompositeImage
                                              "secondary_electron_threshold_ev", "se_threshold_ev");
       config.histogramBinSizeEv   = numberOr(src, config.histogramBinSizeEv,
                                              "histogram_bin_size_ev", "bin_size_ev");
+      config.backend              = normalizeModelName(stringOr(src, config.backend, "backend", "execution_backend"));
+      config.rngSeed              = (unsigned long long)numberOr(src, (double)config.rngSeed, "rng_seed", "seed");
 
       const RuntimeInput::JsonValue* scattering = src.find("scattering");
       if (scattering) {
@@ -383,6 +415,8 @@ namespace CompositeImage
          throw std::runtime_error("composite_image precipitate center_depth_nm must be > -radius_nm (sphere is entirely above the surface)");
       if (config.surfaceLayer.enabled && config.surfaceLayer.thicknessNm <= 0.0)
          throw std::runtime_error("composite_image surface_layer thickness_nm must be positive");
+      if (config.backend != "auto" && config.backend != "cpu" && config.backend != "gpu")
+         throw std::runtime_error("composite_image backend must be auto, cpu, or gpu");
 
       return config;
    }
@@ -416,6 +450,182 @@ namespace CompositeImage
          }
          f << '\n';
       }
+   }
+
+   static void computeWeightFractions(const PhaseConfig& phase, std::vector<double>& weightFractions)
+   {
+      weightFractions.assign(phase.elements.size(), 0.0);
+      double totalWeight = 0.0;
+      for (size_t i = 0; i < phase.elements.size(); ++i)
+         totalWeight += phase.fractions[i] * phase.elements[i]->getAtomicWeight();
+
+      if (totalWeight <= 0.0)
+         throw std::runtime_error("composite_image GPU material has non-positive total atomic weight: " + phase.name);
+
+      for (size_t i = 0; i < phase.elements.size(); ++i)
+         weightFractions[i] = phase.fractions[i] * phase.elements[i]->getAtomicWeight() / totalWeight;
+   }
+
+   static int ensureGpuElement(
+      std::map<int, int>& elementIndex,
+      std::vector<CompositeImageGPU::ElemTableGPU>& elems,
+      const ElementT* element)
+   {
+      int z = element->getAtomicNumber();
+      std::map<int, int>::const_iterator found = elementIndex.find(z);
+      if (found != elementIndex.end())
+         return found->second;
+
+      CompositeImageGPU::ElemTableGPU table;
+      std::memset(&table, 0, sizeof(table));
+      table.Z = z;
+      table.Zp17 = std::pow((double)z, 1.7);
+      table.Zp2 = std::pow((double)z, 2.0);
+      table.Zp3 = std::pow((double)z, 3.0);
+      table.extraBelowE = ToSI::eV(50.0);
+
+      const NISTMottScatteringAngle::NISTMottScatteringAngle& msa =
+         NISTMottScatteringAngle::getNISTMSA(z);
+      const VectorXd& spwem = msa.getSpwem();
+      const MatrixXd& x1 = msa.getX1();
+
+      if ((int)spwem.size() != CompositeImageGPU::SPWEM_LEN || (int)x1.size() != CompositeImageGPU::SPWEM_LEN)
+         throw std::runtime_error("Unexpected NIST Mott table shape for Z=" + std::to_string(z));
+
+      for (int i = 0; i < CompositeImageGPU::SPWEM_LEN; ++i) {
+         table.spwem[i] = spwem[i];
+         if ((int)x1[i].size() != CompositeImageGPU::X1_LEN)
+            throw std::runtime_error("Unexpected NIST Mott x1 table shape for Z=" + std::to_string(z));
+         for (int j = 0; j < CompositeImageGPU::X1_LEN; ++j)
+            table.x1[i * CompositeImageGPU::X1_LEN + j] = x1[i][j];
+      }
+
+      const RandomizedScatterT& nist = NISTMottRS::Factory.get(*element);
+      const BrowningEmpiricalCrossSection::BrowningEmpiricalCrossSection& browning =
+         BrowningEmpiricalCrossSection::getBECS(z);
+      table.MottXSatMin = nist.totalCrossSection(table.extraBelowE);
+      table.sfBrowning = table.MottXSatMin / browning.totalCrossSection(table.extraBelowE);
+
+      int index = (int)elems.size();
+      elems.push_back(table);
+      elementIndex[z] = index;
+      return index;
+   }
+
+   static double gpuMeanIonizationPotential(const ElementT* element)
+   {
+      double z = (double)element->getAtomicNumber();
+      if (z < 13.0)
+         return ToSI::eV(11.5 * z);
+      return ToSI::eV(9.76 * z + 58.8 * std::pow(z, -0.19));
+   }
+
+   static CompositeImageGPU::MatGPU makeVacuumGpuMaterial()
+   {
+      CompositeImageGPU::MatGPU mat;
+      std::memset(&mat, 0, sizeof(mat));
+      mat.minEtrack = -INFINITY;
+      mat.isVacuum = true;
+      return mat;
+   }
+
+   static CompositeImageGPU::MatGPU makeGpuMaterial(
+      const PhaseConfig& phase,
+      std::map<int, int>& elementIndex,
+      std::vector<CompositeImageGPU::ElemTableGPU>& elems)
+   {
+      if ((int)phase.elements.size() > CompositeImageGPU::MAX_MAT_ELEM)
+         throw std::runtime_error("composite_image GPU supports at most 8 elements per material: " + phase.name);
+
+      CompositeImageGPU::MatGPU mat;
+      std::memset(&mat, 0, sizeof(mat));
+      mat.isVacuum = false;
+      mat.nElems = (int)phase.elements.size();
+      mat.nCSD = mat.nElems;
+      mat.densityNa = phase.density * PhysicalConstants::AvagadroNumber;
+      mat.energySEgen = ToSI::eV(phase.energySEgen);
+      mat.eFermi = ToSI::eV(phase.efermi);
+      mat.energyCBbottom = ToSI::eV(-phase.workfun - phase.efermi);
+      mat.minEtrack = std::max(-mat.energyCBbottom, 0.0);
+      mat.breakE = ToSI::eV(phase.breakEeV);
+      mat.bhplus1eV = mat.minEtrack + ToSI::eV(1.0);
+      if (mat.breakE < mat.bhplus1eV)
+         mat.breakE = mat.bhplus1eV;
+
+      std::vector<double> wf;
+      computeWeightFractions(phase, wf);
+      for (int i = 0; i < mat.nElems; ++i) {
+         const ElementT* element = phase.elements[i];
+         mat.elemIdx[i] = ensureGpuElement(elementIndex, elems, element);
+         mat.scalefactor[i] = 1000.0 * wf[i] / element->getAtomicWeight();
+         mat.recipJ[i] = 1.166 / gpuMeanIonizationPotential(element);
+         mat.betaJL[i] = 1.0 - (mat.recipJ[i] * mat.bhplus1eV);
+         mat.coefJL[i] = 2.01507E-28 * phase.density * wf[i] *
+            element->getAtomicNumber() / element->getAtomicWeight();
+      }
+
+      mat.gammaN = 0.0;
+      for (int i = 0; i < mat.nCSD; ++i)
+         mat.gammaN += mat.coefJL[i] * std::log((mat.recipJ[i] * mat.breakE) + mat.betaJL[i]);
+      mat.gammaN /= std::pow(mat.breakE, 3.5);
+      return mat;
+   }
+
+   static CompositeImageGPU::GPURunConfig makeGpuRunConfig(
+      const CompositeImageConfig& config,
+      const PhaseConfig& matrix,
+      const PhaseConfig& precip,
+      bool hasSL,
+      double slThicknessM,
+      const double precipCenter[],
+      double precipRadius,
+      double beamE,
+      double beamsize,
+      double beamStartZ,
+      int nx,
+      int ny,
+      double cx,
+      double cy,
+      double hw,
+      double dxm,
+      double dym)
+   {
+      CompositeImageGPU::GPURunConfig gpu;
+      std::map<int, int> elementIndex;
+
+      gpu.elems.clear();
+      gpu.mats[0] = makeVacuumGpuMaterial();
+      gpu.mats[1] = hasSL ? makeGpuMaterial(config.surfaceLayer.phase, elementIndex, gpu.elems) : makeVacuumGpuMaterial();
+      gpu.mats[2] = makeGpuMaterial(matrix, elementIndex, gpu.elems);
+      gpu.mats[3] = makeGpuMaterial(precip, elementIndex, gpu.elems);
+
+      gpu.geom.precipCx = precipCenter[0];
+      gpu.geom.precipCy = precipCenter[1];
+      gpu.geom.precipCz = precipCenter[2];
+      gpu.geom.precipR = precipRadius;
+      gpu.geom.precipR2 = precipRadius * precipRadius;
+      gpu.geom.slThick = slThicknessM;
+      gpu.geom.hasSL = hasSL;
+
+      gpu.nx = nx;
+      gpu.ny = ny;
+      gpu.pixelX.resize(nx * ny);
+      gpu.pixelY.resize(nx * ny);
+      for (int row = 0; row < ny; ++row) {
+         for (int col = 0; col < nx; ++col) {
+            int idx = row * nx + col;
+            gpu.pixelX[idx] = cx - hw + col * dxm;
+            gpu.pixelY[idx] = cy + hw - row * dym;
+         }
+      }
+
+      gpu.beamE = beamE;
+      gpu.beamSizeM = beamsize;
+      gpu.beamStartZ = beamStartZ;
+      gpu.trajPerPixel = config.trajectoriesPerPixel;
+      gpu.seThresholdJ = ToSI::eV(config.seThresholdEv);
+      gpu.seed = config.rngSeed;
+      return gpu;
    }
 
    static void runImage(const CompositeImageConfig& config)
@@ -506,12 +716,16 @@ namespace CompositeImage
       double cy   = config.scan.centerYNm  * 1.e-9;
       double dxm  = (nx > 1) ? (2.0 * hw / (nx - 1)) : 0.0;
       double dym  = (ny > 1) ? (2.0 * hw / (ny - 1)) : 0.0;
+      double minBeamZ   = hasSL ? (-slThicknessM - 1.e-9) : -1.e-9;
+      double beamStartZ = (precipCenter[2] - precipRadius) - 5.e-9;
+      if (beamStartZ > minBeamZ) beamStartZ = minBeamZ;
 
       // Results: row 0 = +halfWidthNm (top of image), row ny-1 = -halfWidthNm (bottom).
       std::vector<std::vector<double>> seMap  (ny, std::vector<double>(nx, 0.0));
       std::vector<std::vector<double>> se1Map (ny, std::vector<double>(nx, 0.0));
       std::vector<std::vector<double>> se2Map (ny, std::vector<double>(nx, 0.0));
       std::vector<std::vector<double>> bseMap (ny, std::vector<double>(nx, 0.0));
+      std::vector<std::vector<double>> genSeMap(ny, std::vector<double>(nx, 0.0));
 
       std::ofstream csvFile(config.outputCsv.c_str());
       if (!csvFile.good()) throw std::runtime_error("Unable to open composite_image output file: " + config.outputCsv);
@@ -520,7 +734,64 @@ namespace CompositeImage
       auto wallStart  = std::chrono::system_clock::now();
       int  totalPixels = nx * ny;
       int  pixelsDone  = 0;
+      bool gpuUsed = false;
 
+      if (config.backend != "cpu") {
+         if (CompositeImageGPU::isAvailable()) {
+            printf("  Trying CUDA GPU backend\n"); fflush(stdout);
+            try {
+               CompositeImageGPU::GPURunConfig gpuCfg = makeGpuRunConfig(
+                  config, matrix, precip, hasSL, slThicknessM, precipCenter, precipRadius,
+                  beamE, beamsize, beamStartZ, nx, ny, cx, cy, hw, dxm, dym);
+               CompositeImageGPU::GPUOutput gpuOut;
+               if (CompositeImageGPU::run(gpuCfg, gpuOut)) {
+                  for (int row = 0; row < ny; ++row) {
+                     for (int col = 0; col < nx; ++col) {
+                        int idx = row * nx + col;
+                        seMap[row][col]  = gpuOut.seYield[idx];
+                        se1Map[row][col] = gpuOut.se1Yield[idx];
+                        se2Map[row][col] = gpuOut.se2Yield[idx];
+                        bseMap[row][col] = gpuOut.bseYield[idx];
+                     }
+                  }
+                  gpuUsed = true;
+
+                  // Diagnostic: mean SE generation rate and escape fraction
+                  double meanGenSE = 0.0, meanSE = 0.0, meanBSE = 0.0;
+                  for (int i = 0; i < totalPixels; ++i) {
+                     meanGenSE += gpuOut.genSeYield[i];
+                     meanSE    += gpuOut.seYield[i];
+                     meanBSE   += gpuOut.bseYield[i];
+                  }
+                  meanGenSE /= totalPixels;
+                  meanSE    /= totalPixels;
+                  meanBSE   /= totalPixels;
+                  printf("  CUDA GPU backend complete\n"
+                         "    GPU mean SE yield=%.4f  BSE yield=%.4f  total=%.4f\n"
+                         "    GPU mean genSE/traj=%.4f  SE escape ratio=%.4f\n",
+                         meanSE, meanBSE, meanSE + meanBSE,
+                         meanGenSE, meanGenSE > 0.0 ? meanSE / meanGenSE : 0.0);
+                  fflush(stdout);
+               }
+               else if (config.backend == "gpu") {
+                  throw std::runtime_error("composite_image CUDA backend failed");
+               }
+               else {
+                  printf("  CUDA GPU backend failed; falling back to CPU\n"); fflush(stdout);
+               }
+            }
+            catch (const std::exception& ex) {
+               if (config.backend == "gpu")
+                  throw;
+               printf("  CUDA GPU backend unavailable (%s); falling back to CPU\n", ex.what()); fflush(stdout);
+            }
+         }
+         else if (config.backend == "gpu") {
+            throw std::runtime_error("composite_image backend=gpu requested but no CUDA device is available");
+         }
+      }
+
+      if (!gpuUsed) {
       printf("  Using %d OpenMP thread(s)\n", omp_get_max_threads()); fflush(stdout);
 
       #pragma omp parallel for schedule(dynamic) shared(seMap, bseMap, pixelsDone)
@@ -603,17 +874,17 @@ namespace CompositeImage
 
          // Start beam above: the sphere apex, and (when a surface layer is present)
          // above the top of that layer, so the initial region lookup is always vacuum.
-         double        minBeamZ   = hasSL ? (-slThicknessM - 1.e-9) : -1.e-9;
-         double        beamStartZ = (precipCenter[2] - precipRadius) - 5.e-9;
-         if (beamStartZ > minBeamZ) beamStartZ = minBeamZ;
          double        egCenter[] = { x, y, beamStartZ };
          GaussianBeamT eg_t(beamsize, beamE, origin);
          eg_t.setCenter(egCenter);
 
          MonteCarloSS::MonteCarloSS monte_t(&eg_t, &chamber_t, eg_t.createElectron());
          BackscatterStatsT          back_t(monte_t, nbins);
+         SecondaryCountListener     secondary_t;
          monte_t.addActionListener(back_t);
+         monte_t.addActionListener(secondary_t);
          monte_t.runMultipleTrajectories(config.trajectoriesPerPixel);
+         monte_t.removeActionListener(secondary_t);
          monte_t.removeActionListener(back_t);
 
          const HistogramT& hist    = back_t.backscatterEnergyHistogram();
@@ -632,11 +903,13 @@ namespace CompositeImage
          double SE1Y = (double)totalSE1 / config.trajectoriesPerPixel;
          double SE2Y = (double)totalSE2 / config.trajectoriesPerPixel;
          double BSEY = back_t.backscatterFraction() - SEY;
+         double GenSEY = (double)secondary_t.generatedSecondaries() / config.trajectoriesPerPixel;
 
          seMap [row][col] = SEY;   // unique cell per thread, no race
          se1Map[row][col] = SE1Y;
          se2Map[row][col] = SE2Y;
          bseMap[row][col] = BSEY;
+         genSeMap[row][col] = GenSEY;
 
          #pragma omp critical(progress)
          {
@@ -647,6 +920,22 @@ namespace CompositeImage
                fflush(stdout);
             }
          }
+      }
+      }
+
+      if (!gpuUsed) {
+         double meanGenSE = 0.0, meanSE = 0.0;
+         for (int row = 0; row < ny; ++row) {
+            for (int col = 0; col < nx; ++col) {
+               meanGenSE += genSeMap[row][col];
+               meanSE    += seMap[row][col];
+            }
+         }
+         meanGenSE /= totalPixels;
+         meanSE    /= totalPixels;
+         printf("  CPU mean genSE/traj=%.4f  SE escape ratio=%.4f\n",
+                meanGenSE, meanGenSE > 0.0 ? meanSE / meanGenSE : 0.0);
+         fflush(stdout);
       }
 
       auto wallEnd = std::chrono::system_clock::now();

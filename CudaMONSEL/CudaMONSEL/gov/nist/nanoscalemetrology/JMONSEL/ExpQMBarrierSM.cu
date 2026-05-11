@@ -6,9 +6,59 @@
 #include "gov\nist\nanoscalemetrology\JMONSEL\ExpQMBarrierSM.cuh"
 #include "gov\nist\nanoscalemetrology\JMONSEL\SEMaterial.cuh"
 #include "gov\nist\nanoscalemetrology\JMONSEL\NormalShape.cuh"
+#include "gov\nist\nanoscalemetrology\JMONSEL\NormalMultiPlaneShape.cuh"
 
 namespace ExpQMBarrierSM
 {
+   static bool normalShapeHitAtStepEnd(const ShapeT* shape, const double pos0[], const double pos1[], PositionVecT& nb)
+   {
+      if (!shape->isNormalShape())
+         return false;
+
+      VectorXd normal = ((NormalShapeT*)shape)->getFirstNormal(pos0, pos1);
+      if (normal.size() < 4)
+         return false;
+
+      double t = normal[3];
+      if ((t >= -1.0e-9) && (t <= 1.0 + 1.0e-9)) {
+         nb.assign(normal.begin(), normal.begin() + 3);
+         return true;
+      }
+
+      return false;
+   }
+
+   static bool normalMultiPlaneHitAtStepEnd(const ShapeT* shape, const double pos0[], const double pos1[], PositionVecT& nb)
+   {
+      const NormalMultiPlaneShapeT* multiPlane = dynamic_cast<const NormalMultiPlaneShapeT*>(shape);
+      if (multiPlane == NULL)
+         return false;
+
+      const double delta[] = {
+         pos1[0] - pos0[0],
+         pos1[1] - pos0[1],
+         pos1[2] - pos0[2]
+      };
+
+      for (int i = 0; i < multiPlane->getNumPlanes(); ++i) {
+         const VectorXd& normal = multiPlane->getNormal(i);
+         const double denominator =
+            (delta[0] * normal[0]) + (delta[1] * normal[1]) + (delta[2] * normal[2]);
+         if (denominator == 0.0)
+            continue;
+
+         const double numerator =
+            multiPlane->getB(i) - ((pos0[0] * normal[0]) + (pos0[1] * normal[1]) + (pos0[2] * normal[2]));
+         const double t = numerator / denominator;
+         if ((t >= 1.0 - 1.0e-9) && (t <= 1.0 + 1.0e-9)) {
+            nb.assign(normal.begin(), normal.begin() + 3);
+            return true;
+         }
+      }
+
+      return false;
+   }
+
    ExpQMBarrierSM::ExpQMBarrierSM(const MaterialT* mat) :
       u0(mat->isSEmaterial() ? ((SEmaterialT*)mat)->getEnergyCBbottom() : 0),
       classical(true),
@@ -93,6 +143,17 @@ namespace ExpQMBarrierSM
          const ShapeT* intersectedshape = currentRegion->getShape();
          if (intersectedshape->isNormalShape())
             nb = ((NormalShapeT*)intersectedshape)->getPreviousNormal();
+
+         if (nb.empty()) {
+            const VectorXd pos0 = pe->getPrevPosition();
+            const VectorXd pos1 = pe->getPosition();
+            const RegionBaseT* boundaryRegion = currentRegion->getParent();
+            while ((boundaryRegion != NULL) && nb.empty()) {
+               if (!normalShapeHitAtStepEnd(boundaryRegion->getShape(), pos0.data(), pos1.data(), nb))
+                  normalMultiPlaneHitAtStepEnd(boundaryRegion->getShape(), pos0.data(), pos1.data(), nb);
+               boundaryRegion = boundaryRegion->getParent();
+            }
+         }
       }
 
       // GET THE VECTOR IN THE ELECTRON'S DIRECTION OF MOTION
