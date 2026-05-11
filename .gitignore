@@ -205,3 +205,13 @@ CudaMONSEL/CudaMONSEL/output.txt
 # Local run output
 /*.txt
 CudaMONSEL/CudaMONSEL/*_output.csv
+
+# Simulation output files
+CudaMONSEL/CudaMONSEL/*.pgm
+CudaMONSEL/CudaMONSEL/gamma_precipitate*.csv
+CudaMONSEL/CudaMONSEL/gamma_precipitate_image_*.json
+CudaMONSEL/CudaMONSEL/gpu_*.csv
+CudaMONSEL/CudaMONSEL/gpu_*.json
+CudaMONSEL/CudaMONSEL/run_debug.txt
+CudaMONSEL/CudaMONSEL/test_minimal.csv
+CudaMONSEL/CudaMONSEL/test_omp.csv
