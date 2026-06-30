@@ -77,6 +77,24 @@ namespace CompositeImageGPU
    };
 
    // -----------------------------------------------------------------------
+   // Detector acceptance window in (exit energy, take-off polar angle beta).
+   // beta is measured from the outward optic axis (-z): 0 = up the column,
+   // 90 deg = grazing. Azimuth is integrated (annular / in-lens detectors).
+   // -----------------------------------------------------------------------
+   struct DetectorSpec
+   {
+      double eMinJ, eMaxJ;            // energy window (J), half-open [eMin, eMax)
+      double betaMinRad, betaMaxRad;  // take-off polar-angle window (rad), inclusive
+   };
+
+   __host__ __device__ inline bool detectorAccepts(const DetectorSpec& d,
+                                                   double energyJ, double betaRad)
+   {
+      return energyJ >= d.eMinJ && energyJ < d.eMaxJ
+          && betaRad >= d.betaMinRad && betaRad <= d.betaMaxRad;
+   }
+
+   // -----------------------------------------------------------------------
    // Host-side config passed to runImageGPU()
    // -----------------------------------------------------------------------
    struct GPURunConfig
@@ -108,6 +126,15 @@ namespace CompositeImageGPU
       int    histNEbins = 0;                  // energy bins, width = histEbinWidthJ
       int    histNBbins = 0;                  // polar-angle bins, 0..90 deg
       double histEbinWidthJ = 0.0;            // energy bin width (J)
+
+      // Optional inline detector channels (energy x take-off-angle windows).
+      std::vector<DetectorSpec> detectors;
+
+      // Optional per-pixel radial escape-distance histogram (by type): bins the
+      // lateral distance |escape_xy - beam_center_xy| to expose SE1 (narrow) vs
+      // SE2 (wide) delocalization. Disabled when radialNBins == 0.
+      int    radialNBins = 0;
+      double radialMaxM = 0.0;                 // max radius (m); bin width = radialMaxM/radialNBins
    };
 
    // Output per pixel (yield = counts / trajPerPixel)
@@ -120,10 +147,23 @@ namespace CompositeImageGPU
       std::vector<double> genSeYield; // SE generation events per trajectory
 
       // Optional escape histogram: raw counts, flattened
-      // [pixel][energy_bin][angle_bin]; empty when histEnabled was false.
+      // [pixel][type][energy_bin][angle_bin]; empty when histEnabled was false.
+      // type: 0 = SE1, 1 = SE2, 2 = other (backscattered primary).
       std::vector<int> escapeHist;
+      int histNTypes = 0;
       int histNEbins = 0;
       int histNBbins = 0;
+
+      // Optional inline detector channels: yields flattened [pixel*nDet + d].
+      std::vector<double> detYield;
+      int nDet = 0;
+
+      // Optional radial escape-distance histogram: counts flattened
+      // [pixel][type][radial_bin]; empty when radialNBins was 0.
+      std::vector<int> radialHist;
+      int radialNTypes = 0;
+      int radialNBins = 0;
+      double radialMaxM = 0.0;
    };
 
    // Returns true if at least one CUDA device is present

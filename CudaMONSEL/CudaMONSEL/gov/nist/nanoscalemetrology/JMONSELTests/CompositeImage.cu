@@ -98,6 +98,17 @@ namespace CompositeImage
       int    nyPixels;
    };
 
+   // One synthesised detector channel: an (energy, take-off-angle) acceptance box.
+   struct DetectorConfig
+   {
+      std::string name;
+      std::string outputPgm;   // optional per-detector PGM map
+      double      eMinEv;
+      double      eMaxEv;      // a very large value means "no upper bound"
+      double      betaMinDeg;  // take-off polar angle from outward optic axis (-z)
+      double      betaMaxDeg;
+   };
+
    struct CompositeImageConfig
    {
       std::string name;
@@ -124,6 +135,11 @@ namespace CompositeImage
       bool        escapeHistEnabled;
       int         escapeHistAngleBins;
       std::string escapeHistOutput;   // output base name; writes <base>.bin + <base>.json
+      int         escapeHistRadialBins;   // 0 disables the radial escape-distance histogram
+      double      escapeHistRadialMaxNm;  // <=0 defaults to the scan half-width
+
+      // Optional inline detector channels (CPU + GPU).
+      std::vector<DetectorConfig> detectors;
    };
 
    class SecondaryCountListener : public ActionListenerT
@@ -142,6 +158,36 @@ namespace CompositeImage
 
    private:
       int startSecondaryEvents = 0;
+   };
+
+   // CPU-path detector accumulator: mirrors the GPU recordEscape detector loop.
+   // On each BackscatterEvent it reads the exiting electron's energy and exit
+   // direction and tallies every detector whose (energy, take-off-angle) window
+   // accepts it. beta = pi - theta (theta = exit direction polar angle from +z).
+   class DetectorCountListener : public ActionListenerT
+   {
+   public:
+      DetectorCountListener(const MonteCarloSS::MonteCarloSS& monte,
+                            const std::vector<CompositeImageGPU::DetectorSpec>& specs)
+         : mMonte(monte), mSpecs(specs), mCounts(specs.size(), 0) {}
+
+      void actionPerformed(const int ae) override
+      {
+         if (ae != MonteCarloSS::BackscatterEvent) return;
+         const auto&  el      = mMonte.getElectron();
+         const double energyJ = el.getEnergy();
+         const double beta    = Math2::PI - el.getTheta();
+         for (size_t d = 0; d < mSpecs.size(); ++d)
+            if (CompositeImageGPU::detectorAccepts(mSpecs[d], energyJ, beta))
+               ++mCounts[d];
+      }
+
+      const std::vector<int>& counts() const { return mCounts; }
+
+   private:
+      const MonteCarloSS::MonteCarloSS&                   mMonte;
+      const std::vector<CompositeImageGPU::DetectorSpec>& mSpecs;
+      std::vector<int>                                    mCounts;
    };
 
    static void addElement(PhaseConfig& phase, const ElementT* element, double fraction)
@@ -169,6 +215,8 @@ namespace CompositeImage
       config.escapeHistEnabled      = false;
       config.escapeHistAngleBins    = 18;
       config.escapeHistOutput       = "";
+      config.escapeHistRadialBins   = 0;
+      config.escapeHistRadialMaxNm  = 0.0;
       config.scattering.elastic     = "nist_mott";
       config.scattering.inelastic   = "fitted";
       config.scattering.csd         = "joy_luo_nieminen";
@@ -354,6 +402,71 @@ namespace CompositeImage
       return sc;
    }
 
+   // Parse one detector entry. A preset seeds the (energy, take-off-angle) box;
+   // explicit fields or a working-distance/radii geometry then override it.
+   static DetectorConfig readDetectorConfig(const RuntimeInput::JsonValue& json,
+                                            double seThresholdEv)
+   {
+      if (!json.isObject()) throw std::runtime_error("composite_image detector must be an object");
+      const double NO_MAX = 1.0e12;
+      DetectorConfig d;
+      d.name      = stringOr(json, "detector", "name");
+      d.outputPgm = stringOr(json, "", "output_pgm", "pgm");
+      d.eMinEv = 0.0; d.eMaxEv = NO_MAX; d.betaMinDeg = 0.0; d.betaMaxDeg = 90.0;
+
+      std::string preset = normalizeModelName(stringOr(json, "", "preset", "type"));
+      if (preset == "inlens_se" || preset == "tld_se") {
+         d.eMaxEv = seThresholdEv; d.betaMinDeg = 0.0;  d.betaMaxDeg = 15.0;
+      } else if (preset == "annular_bse" || preset == "bse") {
+         d.eMinEv = seThresholdEv; d.betaMinDeg = 30.0; d.betaMaxDeg = 60.0;
+      } else if (preset == "etd_se" || preset == "chamber_se") {
+         d.eMaxEv = seThresholdEv; d.betaMinDeg = 30.0; d.betaMaxDeg = 70.0;
+      } else if (!preset.empty()) {
+         throw std::runtime_error("composite_image detector unknown preset: " + preset);
+      }
+
+      d.eMinEv = numberOr(json, d.eMinEv, "energy_min_ev", "e_min_ev");
+      d.eMaxEv = numberOr(json, d.eMaxEv, "energy_max_ev", "e_max_ev");
+
+      // Geometry: a detector of radius [r_in, r_out] at working distance WD maps,
+      // in the field-free approximation, to take-off angles atan(r/WD).
+      const RuntimeInput::JsonValue* wd = findAny(json, "working_distance_mm", "wd_mm");
+      if (wd && wd->isNumber()) {
+         double wdmm = wd->numberValue;
+         double rin  = numberOr(json, 0.0, "inner_radius_mm", "r_inner_mm");
+         double rout = numberOr(json, 0.0, "outer_radius_mm", "r_outer_mm");
+         if (wdmm > 0.0 && rout > rin) {
+            d.betaMinDeg = ::atan(rin  / wdmm) * 180.0 / Math2::PI;
+            d.betaMaxDeg = ::atan(rout / wdmm) * 180.0 / Math2::PI;
+         }
+      }
+      d.betaMinDeg = numberOr(json, d.betaMinDeg, "polar_min_deg", "beta_min_deg");
+      d.betaMaxDeg = numberOr(json, d.betaMaxDeg, "polar_max_deg", "beta_max_deg");
+
+      if (d.eMaxEv <= d.eMinEv)
+         throw std::runtime_error("composite_image detector energy window invalid: " + d.name);
+      if (d.betaMaxDeg <= d.betaMinDeg)
+         throw std::runtime_error("composite_image detector angle window invalid: " + d.name);
+      return d;
+   }
+
+   static std::vector<CompositeImageGPU::DetectorSpec>
+   makeDetectorSpecs(const std::vector<DetectorConfig>& dets)
+   {
+      const double radPerDeg = Math2::PI / 180.0;
+      std::vector<CompositeImageGPU::DetectorSpec> specs;
+      specs.reserve(dets.size());
+      for (size_t i = 0; i < dets.size(); ++i) {
+         CompositeImageGPU::DetectorSpec s;
+         s.eMinJ      = ToSI::eV(dets[i].eMinEv);
+         s.eMaxJ      = ToSI::eV(dets[i].eMaxEv);
+         s.betaMinRad = dets[i].betaMinDeg * radPerDeg;
+         s.betaMaxRad = dets[i].betaMaxDeg * radPerDeg;
+         specs.push_back(s);
+      }
+      return specs;
+   }
+
    static CompositeImageConfig readConfig(const RuntimeInput::JsonValue& json)
    {
       if (!json.isObject()) throw std::runtime_error("composite_image config must be a JSON object");
@@ -419,6 +532,15 @@ namespace CompositeImage
          config.escapeHistAngleBins = (int)numberOr(*histJson, (double)config.escapeHistAngleBins,
                                                      "angle_bins", "polar_bins");
          config.escapeHistOutput    = stringOr(*histJson, config.escapeHistOutput, "output", "output_base");
+         config.escapeHistRadialBins   = (int)numberOr(*histJson, (double)config.escapeHistRadialBins, "radial_bins");
+         config.escapeHistRadialMaxNm  = numberOr(*histJson, config.escapeHistRadialMaxNm, "radial_max_nm");
+      }
+
+      const RuntimeInput::JsonValue* detsJson = src.find("detectors");
+      if (detsJson) {
+         if (!detsJson->isArray()) throw std::runtime_error("composite_image detectors must be an array");
+         for (size_t i = 0; i < detsJson->arrayValue.size(); ++i)
+            config.detectors.push_back(readDetectorConfig(detsJson->arrayValue[i], config.seThresholdEv));
       }
 
       if (config.trajectoriesPerPixel <= 0) throw std::runtime_error("composite_image trajectories_per_pixel must be positive");
@@ -649,6 +771,12 @@ namespace CompositeImage
       gpu.histEbinWidthJ = ToSI::eV(config.histogramBinSizeEv);
       gpu.histNEbins     = (gpu.histEbinWidthJ > 0.0) ? (int)(beamE / gpu.histEbinWidthJ) : 0;
       if (gpu.histEnabled && gpu.histNEbins < 1) gpu.histNEbins = 1;
+
+      gpu.detectors = makeDetectorSpecs(config.detectors);
+
+      gpu.radialNBins = config.escapeHistRadialBins;
+      gpu.radialMaxM  = (config.escapeHistRadialMaxNm > 0.0)
+         ? config.escapeHistRadialMaxNm * 1.e-9 : hw;   // default: scan half-width
       return gpu;
    }
 
@@ -680,9 +808,11 @@ namespace CompositeImage
          return;
       }
       js << "{\n"
-         << "  \"format\": \"cudamonsel_escape_histogram_v1\",\n"
+         << "  \"format\": \"cudamonsel_escape_histogram_v2\",\n"
          << "  \"dtype\": \"int32\",\n"
-         << "  \"order\": \"[pixel][energy_bin][angle_bin]; pixel = row*nx + col; row 0 = +half_width (top)\",\n"
+         << "  \"order\": \"[pixel][type][energy_bin][angle_bin]; pixel = row*nx + col; row 0 = +half_width (top)\",\n"
+         << "  \"type_bins\": " << out.histNTypes << ",\n"
+         << "  \"type_order\": [\"SE1\", \"SE2\", \"other\"],\n"
          << "  \"nx\": " << nx << ",\n"
          << "  \"ny\": " << ny << ",\n"
          << "  \"energy_bins\": " << out.histNEbins << ",\n"
@@ -702,6 +832,50 @@ namespace CompositeImage
          << "}\n";
       js.close();
       printf("CompositeImage: escape histogram --> %s (+ .json)\n", binPath.c_str()); fflush(stdout);
+   }
+
+   // Write the per-pixel radial escape-distance histogram (by type) as a raw
+   // int32 .bin + .json sidecar. Layout: counts[(pixel*type_bins + t)*radial_bins + ir].
+   static void writeRadialHistogram(const std::string& base,
+                                    const CompositeImageGPU::GPUOutput& out,
+                                    const CompositeImageConfig& config,
+                                    int nx, int ny)
+   {
+      const std::string binPath  = base + "_radial.bin";
+      const std::string jsonPath = base + "_radial.json";
+
+      std::ofstream bin(binPath.c_str(), std::ios::binary);
+      if (!bin.good()) {
+         printf("WARNING: could not open radial-histogram bin file: %s\n", binPath.c_str());
+         return;
+      }
+      bin.write(reinterpret_cast<const char*>(out.radialHist.data()),
+                (std::streamsize)(out.radialHist.size() * sizeof(int)));
+      bin.close();
+
+      const double binNm = (out.radialNBins > 0) ? (out.radialMaxM * 1.e9 / out.radialNBins) : 0.0;
+      std::ofstream js(jsonPath.c_str());
+      if (!js.good()) {
+         printf("WARNING: could not open radial-histogram json file: %s\n", jsonPath.c_str());
+         return;
+      }
+      js << "{\n"
+         << "  \"format\": \"cudamonsel_radial_histogram_v1\",\n"
+         << "  \"dtype\": \"int32\",\n"
+         << "  \"order\": \"[pixel][type][radial_bin]; pixel = row*nx + col; radius = |escape_xy - beam_center_xy|\",\n"
+         << "  \"type_bins\": " << out.radialNTypes << ",\n"
+         << "  \"type_order\": [\"SE1\", \"SE2\", \"other\"],\n"
+         << "  \"nx\": " << nx << ",\n"
+         << "  \"ny\": " << ny << ",\n"
+         << "  \"radial_bins\": " << out.radialNBins << ",\n"
+         << "  \"radial_max_nm\": " << (out.radialMaxM * 1.e9) << ",\n"
+         << "  \"radial_bin_width_nm\": " << binNm << ",\n"
+         << "  \"trajectories_per_pixel\": " << config.trajectoriesPerPixel << ",\n"
+         << "  \"half_width_nm\": " << config.scan.halfWidthNm << ",\n"
+         << "  \"bin_file\": \"" << binPath << "\"\n"
+         << "}\n";
+      js.close();
+      printf("CompositeImage: radial histogram --> %s (+ .json)\n", binPath.c_str()); fflush(stdout);
    }
 
    static void runImage(const CompositeImageConfig& config)
@@ -803,9 +977,17 @@ namespace CompositeImage
       std::vector<std::vector<double>> bseMap (ny, std::vector<double>(nx, 0.0));
       std::vector<std::vector<double>> genSeMap(ny, std::vector<double>(nx, 0.0));
 
+      // Optional detector channels (same specs used by GPU and CPU paths).
+      const int nDet = (int)config.detectors.size();
+      std::vector<CompositeImageGPU::DetectorSpec> detSpecs = makeDetectorSpecs(config.detectors);
+      std::vector<std::vector<std::vector<double>>> detMap(
+         nDet, std::vector<std::vector<double>>(ny, std::vector<double>(nx, 0.0)));
+
       std::ofstream csvFile(config.outputCsv.c_str());
       if (!csvFile.good()) throw std::runtime_error("Unable to open composite_image output file: " + config.outputCsv);
-      csvFile << "x_nm,y_nm,SE_yield,SE1_yield,SE2_yield,BSE_yield,total_yield\n";
+      csvFile << "x_nm,y_nm,SE_yield,SE1_yield,SE2_yield,BSE_yield,total_yield";
+      for (int d = 0; d < nDet; ++d) csvFile << ",det_" << config.detectors[d].name;
+      csvFile << "\n";
 
       auto wallStart  = std::chrono::system_clock::now();
       int  totalPixels = nx * ny;
@@ -828,6 +1010,8 @@ namespace CompositeImage
                         se1Map[row][col] = gpuOut.se1Yield[idx];
                         se2Map[row][col] = gpuOut.se2Yield[idx];
                         bseMap[row][col] = gpuOut.bseYield[idx];
+                        for (int d = 0; d < nDet && gpuOut.nDet == nDet; ++d)
+                           detMap[d][row][col] = gpuOut.detYield[(size_t)idx * nDet + d];
                      }
                   }
                   gpuUsed = true;
@@ -849,7 +1033,7 @@ namespace CompositeImage
                          meanGenSE, meanGenSE > 0.0 ? meanSE / meanGenSE : 0.0);
                   fflush(stdout);
 
-                  if (config.escapeHistEnabled && !gpuOut.escapeHist.empty()) {
+                  if ((config.escapeHistEnabled && !gpuOut.escapeHist.empty()) || !gpuOut.radialHist.empty()) {
                      std::string base = config.escapeHistOutput;
                      if (base.empty()) {
                         base = config.outputCsv;
@@ -857,7 +1041,10 @@ namespace CompositeImage
                         if (dot != std::string::npos) base = base.substr(0, dot);
                         base += "_eahist";
                      }
-                     writeEscapeHistogram(base, gpuOut, config, nx, ny, cx, cy, hw);
+                     if (!gpuOut.escapeHist.empty())
+                        writeEscapeHistogram(base, gpuOut, config, nx, ny, cx, cy, hw);
+                     if (!gpuOut.radialHist.empty())
+                        writeRadialHistogram(base, gpuOut, config, nx, ny);
                   }
                   else if (config.escapeHistEnabled) {
                      printf("  WARNING: escape_histogram enabled but GPU returned no histogram\n"); fflush(stdout);
@@ -971,9 +1158,12 @@ namespace CompositeImage
          MonteCarloSS::MonteCarloSS monte_t(&eg_t, &chamber_t, eg_t.createElectron());
          BackscatterStatsT          back_t(monte_t, nbins);
          SecondaryCountListener     secondary_t;
+         DetectorCountListener      detector_t(monte_t, detSpecs);
          monte_t.addActionListener(back_t);
          monte_t.addActionListener(secondary_t);
+         if (nDet > 0) monte_t.addActionListener(detector_t);
          monte_t.runMultipleTrajectories(config.trajectoriesPerPixel);
+         if (nDet > 0) monte_t.removeActionListener(detector_t);
          monte_t.removeActionListener(secondary_t);
          monte_t.removeActionListener(back_t);
 
@@ -1000,6 +1190,8 @@ namespace CompositeImage
          se2Map[row][col] = SE2Y;
          bseMap[row][col] = BSEY;
          genSeMap[row][col] = GenSEY;
+         for (int d = 0; d < nDet; ++d)
+            detMap[d][row][col] = (double)detector_t.counts()[d] / config.trajectoriesPerPixel;
 
          #pragma omp critical(progress)
          {
@@ -1040,7 +1232,9 @@ namespace CompositeImage
             double total = seMap[row][col] + bseMap[row][col];
             csvFile << x * 1.e9 << "," << y * 1.e9 << ","
                     << seMap[row][col]  << "," << se1Map[row][col] << ","
-                    << se2Map[row][col] << "," << bseMap[row][col] << "," << total << "\n";
+                    << se2Map[row][col] << "," << bseMap[row][col] << "," << total;
+            for (int d = 0; d < nDet; ++d) csvFile << "," << detMap[d][row][col];
+            csvFile << "\n";
          }
       }
       csvFile.close();
@@ -1060,6 +1254,13 @@ namespace CompositeImage
       if (!config.outputPgmBSE.empty()) {
          writePGM(config.outputPgmBSE, bseMap, ny, nx);
          printf("CompositeImage: BSE image --> %s\n", config.outputPgmBSE.c_str()); fflush(stdout);
+      }
+      for (int d = 0; d < nDet; ++d) {
+         if (!config.detectors[d].outputPgm.empty()) {
+            writePGM(config.detectors[d].outputPgm, detMap[d], ny, nx);
+            printf("CompositeImage: detector '%s' image --> %s\n",
+                   config.detectors[d].name.c_str(), config.detectors[d].outputPgm.c_str()); fflush(stdout);
+         }
       }
       printf("CompositeImage: CSV data  --> %s\n", config.outputCsv.c_str()); fflush(stdout);
    }
