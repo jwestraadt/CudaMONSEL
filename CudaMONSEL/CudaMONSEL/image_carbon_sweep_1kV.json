@@ -1,0 +1,939 @@
+{
+  "schema_version": 1,
+  "run_tests": false,
+  "simulations": [
+    {
+      "type": "composite_image",
+      "name": "carbon 0.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t0p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t0p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 1.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t1p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t1p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 1.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 2.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t2p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t2p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 2.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 3.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t3p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t3p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 3.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 5.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t5p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t5p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 5.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 10.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t10p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t10p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 10.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 15.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t15p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t15p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 15.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 20.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t20p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t20p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 20.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 30.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t30p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t30p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 30.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 40.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t40p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t40p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 40.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    },
+    {
+      "type": "composite_image",
+      "name": "carbon 50.0 nm on gamma, 1 keV",
+      "enabled": true,
+      "output_csv": "image_carbon_t50p0_1kV.csv",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 2000,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 2.0,
+      "backend": "gpu",
+      "escape_histogram": {
+        "enabled": true,
+        "angle_bins": 6,
+        "output": "image_carbon_t50p0_1kV"
+      },
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 90.0,
+        "nx_pixels": 16,
+        "ny_pixels": 16
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": {
+          "Ni": 63.0,
+          "Cr": 8.0,
+          "Co": 10.0,
+          "W": 6.0,
+          "Re": 4.0,
+          "Al": 6.0,
+          "Ta": 3.0
+        }
+      },
+      "precipitate": {
+        "shape": "sphere",
+        "radius_nm": 30.0,
+        "center_depth_nm": 30.0,
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0
+      },
+      "surface_layer": {
+        "thickness_nm": 50.0,
+        "name": "carbon",
+        "density_kg_m3": 2000.0,
+        "work_function_ev": 5.0,
+        "fermi_energy_ev": 5.0,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 35.0,
+        "break_energy_ev": 30.0,
+        "composition": {
+          "C": 1.0
+        }
+      }
+    }
+  ]
+}

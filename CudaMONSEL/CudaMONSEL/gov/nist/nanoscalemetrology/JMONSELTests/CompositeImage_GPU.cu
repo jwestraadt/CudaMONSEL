@@ -30,6 +30,7 @@ namespace CompositeImageGPU
       static const int MAX_SECONDARY_STACK = 64;
       static const int MAX_STEPS_PER_ELECTRON = 200000;
       static const int LAUNCH_BATCH_TRAJ = 65536;
+      static const int HIST_NTYPE = 3;   // escape-histogram type slots: SE1, SE2, other
 
       struct Vec3
       {
@@ -78,10 +79,17 @@ namespace CompositeImageGPU
          double beamStartZ;
          double seThresholdJ;
          unsigned long long seed;
-         int*   escapeHist;        // per-pixel [energy_bin][angle_bin], nullptr if disabled
+         int*   escapeHist;        // per-pixel [type][energy_bin][angle_bin], nullptr if disabled
+         int    histNType;         // 3: 0=SE1, 1=SE2, 2=other (BSE/primary)
          int    histNEbins;
          int    histNBbins;
          double histEbinWidthJ;
+         const DetectorSpec* detectors;  // device array, nullptr if none
+         int    nDet;
+         int*   detCounts;         // per-pixel [detector], nullptr if none
+         int*   radialHist;        // per-pixel [type][radial_bin], nullptr if disabled
+         int    radialNBins;
+         double radialInvBinM;     // = radialNBins / radialMaxM
       };
 
       __host__ __device__ double sqr(double x)
@@ -272,10 +280,13 @@ namespace CompositeImageGPU
          }
          else if (region == REGION_PRECIP) {
             considerHit(best, sphereT(p0, p1, geom), REGION_BULK, dir);
-            // Use dir (electron direction) as the z=0 surface normal to match the CPU
-            // ExpQMBarrierSM fallback: precipSphere is not a NormalShape so CPU uses
-            // nb=n0 (dir), giving cosalpha=1 and unconditional transmission when kE>deltaU.
-            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, dir);
+            // The precipitate's flat face lies in the z=0 free surface, so its outward
+            // normal is {0,0,-1} (toward vacuum), identical to the matrix free surface.
+            // Using the physical normal gates SE escape on the perpendicular energy
+            // component (cos^2(alpha) * kE), instead of the earlier dir-normal which
+            // forced cosalpha=1 and let an exposed precipitate face over-transmit SEs.
+            // CPU ExpQMBarrierSM is updated to match this in the parity step.
+            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
             considerHit(best, chamberT(p0, p1), REGION_NONE, dir);
          }
 
@@ -591,19 +602,42 @@ namespace CompositeImageGPU
                atomicAdd(&cfg.se2Counts[pixel], 1);
          }
 
-         // Optional (escape energy x take-off angle) histogram. beta is the
-         // take-off polar angle from the outward optic axis (-z): beta = pi - theta,
-         // so beta = 0 is straight up the column, beta = 90 deg is grazing.
+         // beta = take-off polar angle from the outward optic axis (-z):
+         // beta = pi - theta, so beta = 0 is straight up the column, 90 deg grazing.
+         const double beta = CM_GPU_PI - e.theta;
+
+         // Optional (escape type x energy x take-off angle) histogram.
+         // type slot: 0 = SE1, 1 = SE2, 2 = other (backscattered primary).
          if (cfg.escapeHist != nullptr) {
             int ie = (int)(e.energy / cfg.histEbinWidthJ);
             if (ie < 0) ie = 0;
             if (ie >= cfg.histNEbins) ie = cfg.histNEbins - 1;
-            double beta = CM_GPU_PI - e.theta;
             double bwidth = (CM_GPU_PI * 0.5) / cfg.histNBbins;
             int ib = (int)(beta / bwidth);
             if (ib < 0) ib = 0;
             if (ib >= cfg.histNBbins) ib = cfg.histNBbins - 1;
-            atomicAdd(&cfg.escapeHist[(pixel * cfg.histNEbins + ie) * cfg.histNBbins + ib], 1);
+            int tslot = (e.type == TYPE_SE1) ? 0 : (e.type == TYPE_SE2) ? 1 : 2;
+            atomicAdd(&cfg.escapeHist[((pixel * cfg.histNType + tslot) * cfg.histNEbins + ie) * cfg.histNBbins + ib], 1);
+         }
+
+         // Optional inline detector channels (energy x take-off-angle windows).
+         for (int d = 0; d < cfg.nDet; ++d) {
+            if (detectorAccepts(cfg.detectors[d], e.energy, beta))
+               atomicAdd(&cfg.detCounts[pixel * cfg.nDet + d], 1);
+         }
+
+         // Optional radial escape-distance histogram by type: lateral distance
+         // of the escape point from the beam center. SE1 stays near the beam
+         // (narrow); SE2 leaves over the backscatter exit footprint (wide).
+         if (cfg.radialHist != nullptr) {
+            double ddx = e.pos.x - cfg.pixelX[pixel];
+            double ddy = e.pos.y - cfg.pixelY[pixel];
+            double dr = sqrt(ddx * ddx + ddy * ddy);
+            int ir = (int)(dr * cfg.radialInvBinM);
+            if (ir < 0) ir = 0;
+            if (ir >= cfg.radialNBins) ir = cfg.radialNBins - 1;
+            int tslot = (e.type == TYPE_SE1) ? 0 : (e.type == TYPE_SE2) ? 1 : 2;
+            atomicAdd(&cfg.radialHist[(pixel * cfg.histNType + tslot) * cfg.radialNBins + ir], 1);
          }
       }
 
@@ -748,7 +782,11 @@ namespace CompositeImageGPU
       const int pixelCount = cfg.nx * cfg.ny;
       const int totalTrajectories = pixelCount * cfg.trajPerPixel;
       const long long histLen = (cfg.histEnabled && cfg.histNEbins > 0 && cfg.histNBbins > 0)
-         ? (long long)pixelCount * cfg.histNEbins * cfg.histNBbins : 0;
+         ? (long long)pixelCount * HIST_NTYPE * cfg.histNEbins * cfg.histNBbins : 0;
+      const int nDet = (int)cfg.detectors.size();
+      const long long detLen = (long long)pixelCount * nDet;
+      const long long radialLen = (cfg.radialNBins > 0)
+         ? (long long)pixelCount * HIST_NTYPE * cfg.radialNBins : 0;
       out.seYield.assign(pixelCount, 0.0);
       out.se1Yield.assign(pixelCount, 0.0);
       out.se2Yield.assign(pixelCount, 0.0);
@@ -765,6 +803,9 @@ namespace CompositeImageGPU
       int* dTotal = nullptr;
       int* dGenSE = nullptr;
       int* dHist = nullptr;
+      DetectorSpec* dDet = nullptr;
+      int* dDetCounts = nullptr;
+      int* dRadial = nullptr;
 
       bool ok = true;
       ok = ok && checkCuda(cudaMalloc((void**)&dMats, sizeof(MatGPU) * 4), "cudaMalloc mats");
@@ -778,6 +819,12 @@ namespace CompositeImageGPU
       ok = ok && checkCuda(cudaMalloc((void**)&dGenSE, sizeof(int) * pixelCount), "cudaMalloc genSECounts");
       if (ok && histLen > 0)
          ok = ok && checkCuda(cudaMalloc((void**)&dHist, sizeof(int) * histLen), "cudaMalloc escapeHist");
+      if (ok && nDet > 0) {
+         ok = ok && checkCuda(cudaMalloc((void**)&dDet, sizeof(DetectorSpec) * nDet), "cudaMalloc detectors");
+         ok = ok && checkCuda(cudaMalloc((void**)&dDetCounts, sizeof(int) * detLen), "cudaMalloc detCounts");
+      }
+      if (ok && radialLen > 0)
+         ok = ok && checkCuda(cudaMalloc((void**)&dRadial, sizeof(int) * radialLen), "cudaMalloc radialHist");
 
       if (ok) {
          ok = ok && checkCuda(cudaMemcpy(dMats, cfg.mats, sizeof(MatGPU) * 4, cudaMemcpyHostToDevice), "copy mats");
@@ -791,6 +838,12 @@ namespace CompositeImageGPU
          ok = ok && checkCuda(cudaMemset(dGenSE, 0, sizeof(int) * pixelCount), "clear genSECounts");
          if (dHist)
             ok = ok && checkCuda(cudaMemset(dHist, 0, sizeof(int) * histLen), "clear escapeHist");
+         if (dDet) {
+            ok = ok && checkCuda(cudaMemcpy(dDet, cfg.detectors.data(), sizeof(DetectorSpec) * nDet, cudaMemcpyHostToDevice), "copy detectors");
+            ok = ok && checkCuda(cudaMemset(dDetCounts, 0, sizeof(int) * detLen), "clear detCounts");
+         }
+         if (dRadial)
+            ok = ok && checkCuda(cudaMemset(dRadial, 0, sizeof(int) * radialLen), "clear radialHist");
       }
 
       if (ok) {
@@ -813,9 +866,16 @@ namespace CompositeImageGPU
          kcfg.seThresholdJ = cfg.seThresholdJ;
          kcfg.seed = cfg.seed == 0 ? 0x123456789abcdef0ULL : cfg.seed;
          kcfg.escapeHist = dHist;   // nullptr when histogram disabled
+         kcfg.histNType = HIST_NTYPE;
          kcfg.histNEbins = cfg.histNEbins;
          kcfg.histNBbins = cfg.histNBbins;
          kcfg.histEbinWidthJ = cfg.histEbinWidthJ;
+         kcfg.detectors = dDet;     // nullptr when no detectors
+         kcfg.nDet = nDet;
+         kcfg.detCounts = dDetCounts;
+         kcfg.radialHist = dRadial;  // nullptr when radial disabled
+         kcfg.radialNBins = cfg.radialNBins;
+         kcfg.radialInvBinM = (cfg.radialMaxM > 0.0) ? (cfg.radialNBins / cfg.radialMaxM) : 0.0;
 
          const int threads = 128;
          for (int start = 0; ok && start < totalTrajectories; start += LAUNCH_BATCH_TRAJ) {
@@ -830,6 +890,8 @@ namespace CompositeImageGPU
       }
 
       std::vector<int> se(pixelCount, 0), se1(pixelCount, 0), se2(pixelCount, 0), total(pixelCount, 0), genSE(pixelCount, 0);
+      std::vector<int> detCountsHost(nDet > 0 ? (size_t)detLen : 0, 0);
+      std::vector<int> radialHost(radialLen > 0 ? (size_t)radialLen : 0, 0);
       if (ok) {
          ok = ok && checkCuda(cudaMemcpy(se.data(), dSE, sizeof(int) * pixelCount, cudaMemcpyDeviceToHost), "copy seCounts");
          ok = ok && checkCuda(cudaMemcpy(se1.data(), dSE1, sizeof(int) * pixelCount, cudaMemcpyDeviceToHost), "copy se1Counts");
@@ -839,9 +901,14 @@ namespace CompositeImageGPU
          if (dHist) {
             out.escapeHist.assign((size_t)histLen, 0);
             ok = ok && checkCuda(cudaMemcpy(out.escapeHist.data(), dHist, sizeof(int) * histLen, cudaMemcpyDeviceToHost), "copy escapeHist");
+            out.histNTypes = HIST_NTYPE;
             out.histNEbins = cfg.histNEbins;
             out.histNBbins = cfg.histNBbins;
          }
+         if (dDetCounts)
+            ok = ok && checkCuda(cudaMemcpy(detCountsHost.data(), dDetCounts, sizeof(int) * detLen, cudaMemcpyDeviceToHost), "copy detCounts");
+         if (dRadial)
+            ok = ok && checkCuda(cudaMemcpy(radialHost.data(), dRadial, sizeof(int) * radialLen, cudaMemcpyDeviceToHost), "copy radialHist");
       }
 
       cudaFree(dMats);
@@ -854,6 +921,9 @@ namespace CompositeImageGPU
       cudaFree(dTotal);
       cudaFree(dGenSE);
       cudaFree(dHist);
+      cudaFree(dDet);
+      cudaFree(dDetCounts);
+      cudaFree(dRadial);
 
       if (!ok)
          return false;
@@ -865,6 +935,18 @@ namespace CompositeImageGPU
          out.se2Yield[i]   = se2[i]   / denom;
          out.bseYield[i]   = (total[i] - se[i]) / denom;
          out.genSeYield[i] = genSE[i] / denom;
+      }
+      if (nDet > 0) {
+         out.detYield.assign((size_t)detLen, 0.0);
+         out.nDet = nDet;
+         for (long long i = 0; i < detLen; ++i)
+            out.detYield[(size_t)i] = detCountsHost[(size_t)i] / denom;
+      }
+      if (cfg.radialNBins > 0) {
+         out.radialHist = radialHost;
+         out.radialNTypes = HIST_NTYPE;
+         out.radialNBins = cfg.radialNBins;
+         out.radialMaxM = cfg.radialMaxM;
       }
       return true;
    }

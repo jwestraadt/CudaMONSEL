@@ -29,11 +29,16 @@ def load_histogram(json_path):
         bin_path = os.path.join(os.path.dirname(os.path.abspath(json_path)), os.path.basename(bin_path))
     nx, ny = meta["nx"], meta["ny"]
     nE, nB = meta["energy_bins"], meta["angle_bins"]
+    nT = meta.get("type_bins", 1)                # v2 adds a type axis (SE1/SE2/other)
     data = np.fromfile(bin_path, dtype=np.int32)
-    expected = nx * ny * nE * nB
+    expected = nx * ny * nT * nE * nB
     if data.size != expected:
         raise ValueError("bin size %d != expected %d" % (data.size, expected))
-    hist = data.reshape(ny, nx, nE, nB)          # [row][col][energy_bin][angle_bin]
+    if nT > 1:
+        # Detector signals are type-agnostic, so sum over the type axis.
+        hist = data.reshape(ny, nx, nT, nE, nB).sum(axis=2)
+    else:
+        hist = data.reshape(ny, nx, nE, nB)      # [row][col][energy_bin][angle_bin]
     return meta, hist
 
 
