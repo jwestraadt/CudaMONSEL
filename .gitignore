@@ -218,3 +218,8 @@ CudaMONSEL/CudaMONSEL/test_omp.csv
 
 # Composite-image session outputs (regenerable; the .json input decks are kept)
 CudaMONSEL/CudaMONSEL/image_*.csv
+
+# Escape-histogram and detector post-processing outputs (regenerable)
+CudaMONSEL/CudaMONSEL/*_eahist.bin
+CudaMONSEL/CudaMONSEL/*_eahist.json
+CudaMONSEL/CudaMONSEL/*_detectors.png

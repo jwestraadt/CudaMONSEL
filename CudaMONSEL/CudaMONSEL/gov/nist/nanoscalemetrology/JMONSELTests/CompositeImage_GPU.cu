@@ -78,6 +78,10 @@ namespace CompositeImageGPU
          double beamStartZ;
          double seThresholdJ;
          unsigned long long seed;
+         int*   escapeHist;        // per-pixel [energy_bin][angle_bin], nullptr if disabled
+         int    histNEbins;
+         int    histNBbins;
+         double histEbinWidthJ;
       };
 
       __host__ __device__ double sqr(double x)
@@ -586,6 +590,21 @@ namespace CompositeImageGPU
             else if (e.type == TYPE_SE2)
                atomicAdd(&cfg.se2Counts[pixel], 1);
          }
+
+         // Optional (escape energy x take-off angle) histogram. beta is the
+         // take-off polar angle from the outward optic axis (-z): beta = pi - theta,
+         // so beta = 0 is straight up the column, beta = 90 deg is grazing.
+         if (cfg.escapeHist != nullptr) {
+            int ie = (int)(e.energy / cfg.histEbinWidthJ);
+            if (ie < 0) ie = 0;
+            if (ie >= cfg.histNEbins) ie = cfg.histNEbins - 1;
+            double beta = CM_GPU_PI - e.theta;
+            double bwidth = (CM_GPU_PI * 0.5) / cfg.histNBbins;
+            int ib = (int)(beta / bwidth);
+            if (ib < 0) ib = 0;
+            if (ib >= cfg.histNBbins) ib = cfg.histNBbins - 1;
+            atomicAdd(&cfg.escapeHist[(pixel * cfg.histNEbins + ie) * cfg.histNBbins + ib], 1);
+         }
       }
 
       __device__ void initializePrimary(ElectronState& e, const KernelConfig& cfg, int pixel, Rng& rng)
@@ -728,6 +747,8 @@ namespace CompositeImageGPU
 
       const int pixelCount = cfg.nx * cfg.ny;
       const int totalTrajectories = pixelCount * cfg.trajPerPixel;
+      const long long histLen = (cfg.histEnabled && cfg.histNEbins > 0 && cfg.histNBbins > 0)
+         ? (long long)pixelCount * cfg.histNEbins * cfg.histNBbins : 0;
       out.seYield.assign(pixelCount, 0.0);
       out.se1Yield.assign(pixelCount, 0.0);
       out.se2Yield.assign(pixelCount, 0.0);
@@ -743,6 +764,7 @@ namespace CompositeImageGPU
       int* dSE2 = nullptr;
       int* dTotal = nullptr;
       int* dGenSE = nullptr;
+      int* dHist = nullptr;
 
       bool ok = true;
       ok = ok && checkCuda(cudaMalloc((void**)&dMats, sizeof(MatGPU) * 4), "cudaMalloc mats");
@@ -754,6 +776,8 @@ namespace CompositeImageGPU
       ok = ok && checkCuda(cudaMalloc((void**)&dSE2, sizeof(int) * pixelCount), "cudaMalloc se2Counts");
       ok = ok && checkCuda(cudaMalloc((void**)&dTotal, sizeof(int) * pixelCount), "cudaMalloc totalCounts");
       ok = ok && checkCuda(cudaMalloc((void**)&dGenSE, sizeof(int) * pixelCount), "cudaMalloc genSECounts");
+      if (ok && histLen > 0)
+         ok = ok && checkCuda(cudaMalloc((void**)&dHist, sizeof(int) * histLen), "cudaMalloc escapeHist");
 
       if (ok) {
          ok = ok && checkCuda(cudaMemcpy(dMats, cfg.mats, sizeof(MatGPU) * 4, cudaMemcpyHostToDevice), "copy mats");
@@ -765,6 +789,8 @@ namespace CompositeImageGPU
          ok = ok && checkCuda(cudaMemset(dSE2, 0, sizeof(int) * pixelCount), "clear se2Counts");
          ok = ok && checkCuda(cudaMemset(dTotal, 0, sizeof(int) * pixelCount), "clear totalCounts");
          ok = ok && checkCuda(cudaMemset(dGenSE, 0, sizeof(int) * pixelCount), "clear genSECounts");
+         if (dHist)
+            ok = ok && checkCuda(cudaMemset(dHist, 0, sizeof(int) * histLen), "clear escapeHist");
       }
 
       if (ok) {
@@ -786,6 +812,10 @@ namespace CompositeImageGPU
          kcfg.beamStartZ = cfg.beamStartZ;
          kcfg.seThresholdJ = cfg.seThresholdJ;
          kcfg.seed = cfg.seed == 0 ? 0x123456789abcdef0ULL : cfg.seed;
+         kcfg.escapeHist = dHist;   // nullptr when histogram disabled
+         kcfg.histNEbins = cfg.histNEbins;
+         kcfg.histNBbins = cfg.histNBbins;
+         kcfg.histEbinWidthJ = cfg.histEbinWidthJ;
 
          const int threads = 128;
          for (int start = 0; ok && start < totalTrajectories; start += LAUNCH_BATCH_TRAJ) {
@@ -806,6 +836,12 @@ namespace CompositeImageGPU
          ok = ok && checkCuda(cudaMemcpy(se2.data(), dSE2, sizeof(int) * pixelCount, cudaMemcpyDeviceToHost), "copy se2Counts");
          ok = ok && checkCuda(cudaMemcpy(total.data(), dTotal, sizeof(int) * pixelCount, cudaMemcpyDeviceToHost), "copy totalCounts");
          ok = ok && checkCuda(cudaMemcpy(genSE.data(), dGenSE, sizeof(int) * pixelCount, cudaMemcpyDeviceToHost), "copy genSECounts");
+         if (dHist) {
+            out.escapeHist.assign((size_t)histLen, 0);
+            ok = ok && checkCuda(cudaMemcpy(out.escapeHist.data(), dHist, sizeof(int) * histLen, cudaMemcpyDeviceToHost), "copy escapeHist");
+            out.histNEbins = cfg.histNEbins;
+            out.histNBbins = cfg.histNBbins;
+         }
       }
 
       cudaFree(dMats);
@@ -817,6 +853,7 @@ namespace CompositeImageGPU
       cudaFree(dSE2);
       cudaFree(dTotal);
       cudaFree(dGenSE);
+      cudaFree(dHist);
 
       if (!ok)
          return false;
