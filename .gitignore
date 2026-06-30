@@ -215,3 +215,6 @@ CudaMONSEL/CudaMONSEL/gpu_*.json
 CudaMONSEL/CudaMONSEL/run_debug.txt
 CudaMONSEL/CudaMONSEL/test_minimal.csv
 CudaMONSEL/CudaMONSEL/test_omp.csv
+
+# Composite-image session outputs (regenerable; the .json input decks are kept)
+CudaMONSEL/CudaMONSEL/image_*.csv
