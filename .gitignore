@@ -223,3 +223,14 @@ CudaMONSEL/CudaMONSEL/image_*.csv
 CudaMONSEL/CudaMONSEL/*_eahist.bin
 CudaMONSEL/CudaMONSEL/*_eahist.json
 CudaMONSEL/CudaMONSEL/*_detectors.png
+
+# Histogram binaries, their .json sidecars, and generated analysis charts
+# (regenerable; the .json *input decks* are kept and committed)
+CudaMONSEL/CudaMONSEL/*.bin
+CudaMONSEL/CudaMONSEL/*_radial.json
+!CudaMONSEL/CudaMONSEL/image_sigma_radial.json
+CudaMONSEL/CudaMONSEL/image_carbon_t*.json
+CudaMONSEL/CudaMONSEL/image_*.png
+CudaMONSEL/CudaMONSEL/se1_se2_*.png
+CudaMONSEL/CudaMONSEL/yield_barcharts.png
+CudaMONSEL/CudaMONSEL/bse_contrast_barchart.png
