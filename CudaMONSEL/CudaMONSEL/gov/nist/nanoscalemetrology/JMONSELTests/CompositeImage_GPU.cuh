@@ -100,6 +100,14 @@ namespace CompositeImageGPU
       int    trajPerPixel;
       double seThresholdJ;                   // SE/BSE energy cutoff (J)
       unsigned long long seed;               // deterministic base seed
+
+      // Optional per-pixel (escape energy x take-off angle) histogram.
+      // When histEnabled, every escaping electron is binned by exit energy and
+      // by take-off polar angle beta (from the outward optic axis, -z).
+      bool   histEnabled = false;
+      int    histNEbins = 0;                  // energy bins, width = histEbinWidthJ
+      int    histNBbins = 0;                  // polar-angle bins, 0..90 deg
+      double histEbinWidthJ = 0.0;            // energy bin width (J)
    };
 
    // Output per pixel (yield = counts / trajPerPixel)
@@ -110,6 +118,12 @@ namespace CompositeImageGPU
       std::vector<double> se2Yield;
       std::vector<double> bseYield;
       std::vector<double> genSeYield; // SE generation events per trajectory
+
+      // Optional escape histogram: raw counts, flattened
+      // [pixel][energy_bin][angle_bin]; empty when histEnabled was false.
+      std::vector<int> escapeHist;
+      int histNEbins = 0;
+      int histNBbins = 0;
    };
 
    // Returns true if at least one CUDA device is present

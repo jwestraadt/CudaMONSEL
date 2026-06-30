@@ -371,6 +371,41 @@ Defines the embedded spherical precipitate geometry.
 | `center_x_nm` | Lateral X position of the sphere centre in nm |
 | `center_y_nm` | Lateral Y position of the sphere centre in nm |
 
+#### escape_histogram (optional, GPU backend only)
+
+Records a per-pixel histogram of every escaping electron in (exit energy ×
+take-off polar angle) space, so SEM **detector channels** (in-lens SE, annular
+BSE, chamber ETD, …) can be synthesised in post-processing by applying
+energy/angle acceptance windows — without re-running the Monte Carlo. Omit the
+block to disable (default).
+
+```json
+"escape_histogram": { "enabled": true, "angle_bins": 18 }
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `enabled` | `true` if block present | Turn the histogram on |
+| `angle_bins` | `18` | Number of take-off-angle bins spanning 0–90° |
+| `output` | derived from `output_csv` | Output base name (writes `<base>.bin` + `<base>.json`) |
+
+The energy bin width reuses `histogram_bin_size_ev`, so the number of energy
+bins is `beam_energy_ev / histogram_bin_size_ev`. The take-off angle `beta` is
+measured from the outward optic axis (`-z`): `beta = 0°` is straight up the
+column (in-lens), `beta = 90°` is grazing. Output is a raw `int32` `.bin`
+(layout `[pixel][energy_bin][angle_bin]`, `pixel = row*nx + col`) plus a `.json`
+sidecar describing the dimensions and bin edges.
+
+Apply detector models with the post-processor, which also validates that a
+full-acceptance reconstruction reproduces the run's SE/BSE columns exactly:
+
+```powershell
+python tools/detector_postprocess.py <base>.json --csv <run>.csv
+```
+
+It ships with `inlens_se`, `annular_bse`, and `etd_se` presets and writes a
+`<base>_detectors.png` montage of the synthesised channels.
+
 #### Full example — Ni gamma/gamma-prime precipitate at 1 kV
 
 See `CudaMONSEL/CudaMONSEL/gamma_precipitate_image_1kV.json` for the full working example. Key values:

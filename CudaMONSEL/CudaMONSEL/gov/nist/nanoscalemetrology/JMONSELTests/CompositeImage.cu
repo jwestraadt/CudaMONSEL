@@ -119,6 +119,11 @@ namespace CompositeImage
       PrecipitateConfig  precipitate;
       ScanConfig         scan;
       SurfaceLayerConfig surfaceLayer;
+
+      // Optional per-pixel (escape energy x take-off angle) histogram (GPU backend only).
+      bool        escapeHistEnabled;
+      int         escapeHistAngleBins;
+      std::string escapeHistOutput;   // output base name; writes <base>.bin + <base>.json
    };
 
    class SecondaryCountListener : public ActionListenerT
@@ -161,6 +166,9 @@ namespace CompositeImage
       config.histogramBinSizeEv     = 10.0;
       config.backend                = "auto";
       config.rngSeed                = 0x5eed1234ULL;
+      config.escapeHistEnabled      = false;
+      config.escapeHistAngleBins    = 18;
+      config.escapeHistOutput       = "";
       config.scattering.elastic     = "nist_mott";
       config.scattering.inelastic   = "fitted";
       config.scattering.csd         = "joy_luo_nieminen";
@@ -405,6 +413,14 @@ namespace CompositeImage
          config.surfaceLayer.phase       = readPhaseConfig(*slJson, "surface_layer");
       }
 
+      const RuntimeInput::JsonValue* histJson = findAny(src, "escape_histogram", "detector_histogram");
+      if (histJson && histJson->isObject()) {
+         config.escapeHistEnabled   = histJson->boolOr("enabled", true);
+         config.escapeHistAngleBins = (int)numberOr(*histJson, (double)config.escapeHistAngleBins,
+                                                     "angle_bins", "polar_bins");
+         config.escapeHistOutput    = stringOr(*histJson, config.escapeHistOutput, "output", "output_base");
+      }
+
       if (config.trajectoriesPerPixel <= 0) throw std::runtime_error("composite_image trajectories_per_pixel must be positive");
       if (config.beamEnergyEv <= 0.0)       throw std::runtime_error("composite_image beam_energy_ev must be positive");
       if (config.scan.nxPixels <= 0 || config.scan.nyPixels <= 0)
@@ -417,6 +433,8 @@ namespace CompositeImage
          throw std::runtime_error("composite_image surface_layer thickness_nm must be positive");
       if (config.backend != "auto" && config.backend != "cpu" && config.backend != "gpu")
          throw std::runtime_error("composite_image backend must be auto, cpu, or gpu");
+      if (config.escapeHistEnabled && config.escapeHistAngleBins < 1)
+         throw std::runtime_error("composite_image escape_histogram angle_bins must be positive");
 
       return config;
    }
@@ -625,7 +643,65 @@ namespace CompositeImage
       gpu.trajPerPixel = config.trajectoriesPerPixel;
       gpu.seThresholdJ = ToSI::eV(config.seThresholdEv);
       gpu.seed = config.rngSeed;
+
+      gpu.histEnabled    = config.escapeHistEnabled;
+      gpu.histNBbins     = config.escapeHistAngleBins;
+      gpu.histEbinWidthJ = ToSI::eV(config.histogramBinSizeEv);
+      gpu.histNEbins     = (gpu.histEbinWidthJ > 0.0) ? (int)(beamE / gpu.histEbinWidthJ) : 0;
+      if (gpu.histEnabled && gpu.histNEbins < 1) gpu.histNEbins = 1;
       return gpu;
+   }
+
+   // Write the per-pixel (escape energy x take-off angle) histogram as a raw
+   // int32 .bin plus a .json sidecar describing dimensions and bin edges.
+   // Layout: counts[((row*nx + col) * nEbins + ie) * nBbins + ib], row 0 = +half_width.
+   static void writeEscapeHistogram(const std::string& base,
+                                    const CompositeImageGPU::GPUOutput& out,
+                                    const CompositeImageConfig& config,
+                                    int nx, int ny, double cx, double cy, double hw)
+   {
+      const std::string binPath  = base + ".bin";
+      const std::string jsonPath = base + ".json";
+
+      std::ofstream bin(binPath.c_str(), std::ios::binary);
+      if (!bin.good()) {
+         printf("WARNING: could not open escape-histogram bin file: %s\n", binPath.c_str());
+         return;
+      }
+      bin.write(reinterpret_cast<const char*>(out.escapeHist.data()),
+                (std::streamsize)(out.escapeHist.size() * sizeof(int)));
+      bin.close();
+
+      const double ebinEv     = config.histogramBinSizeEv;
+      const double betaBinDeg = (out.histNBbins > 0) ? (90.0 / out.histNBbins) : 0.0;
+      std::ofstream js(jsonPath.c_str());
+      if (!js.good()) {
+         printf("WARNING: could not open escape-histogram json file: %s\n", jsonPath.c_str());
+         return;
+      }
+      js << "{\n"
+         << "  \"format\": \"cudamonsel_escape_histogram_v1\",\n"
+         << "  \"dtype\": \"int32\",\n"
+         << "  \"order\": \"[pixel][energy_bin][angle_bin]; pixel = row*nx + col; row 0 = +half_width (top)\",\n"
+         << "  \"nx\": " << nx << ",\n"
+         << "  \"ny\": " << ny << ",\n"
+         << "  \"energy_bins\": " << out.histNEbins << ",\n"
+         << "  \"angle_bins\": " << out.histNBbins << ",\n"
+         << "  \"energy_bin_width_ev\": " << ebinEv << ",\n"
+         << "  \"energy_max_ev\": " << (out.histNEbins * ebinEv) << ",\n"
+         << "  \"beam_energy_ev\": " << config.beamEnergyEv << ",\n"
+         << "  \"se_threshold_ev\": " << config.seThresholdEv << ",\n"
+         << "  \"angle_bin_width_deg\": " << betaBinDeg << ",\n"
+         << "  \"angle_max_deg\": 90.0,\n"
+         << "  \"angle_convention\": \"beta = take-off polar angle from outward optic axis (-z); 0 deg = up the column, 90 deg = grazing\",\n"
+         << "  \"trajectories_per_pixel\": " << config.trajectoriesPerPixel << ",\n"
+         << "  \"half_width_nm\": " << (hw * 1.e9) << ",\n"
+         << "  \"center_x_nm\": " << (cx * 1.e9) << ",\n"
+         << "  \"center_y_nm\": " << (cy * 1.e9) << ",\n"
+         << "  \"bin_file\": \"" << binPath << "\"\n"
+         << "}\n";
+      js.close();
+      printf("CompositeImage: escape histogram --> %s (+ .json)\n", binPath.c_str()); fflush(stdout);
    }
 
    static void runImage(const CompositeImageConfig& config)
@@ -772,6 +848,20 @@ namespace CompositeImage
                          meanSE, meanBSE, meanSE + meanBSE,
                          meanGenSE, meanGenSE > 0.0 ? meanSE / meanGenSE : 0.0);
                   fflush(stdout);
+
+                  if (config.escapeHistEnabled && !gpuOut.escapeHist.empty()) {
+                     std::string base = config.escapeHistOutput;
+                     if (base.empty()) {
+                        base = config.outputCsv;
+                        size_t dot = base.find_last_of('.');
+                        if (dot != std::string::npos) base = base.substr(0, dot);
+                        base += "_eahist";
+                     }
+                     writeEscapeHistogram(base, gpuOut, config, nx, ny, cx, cy, hw);
+                  }
+                  else if (config.escapeHistEnabled) {
+                     printf("  WARNING: escape_histogram enabled but GPU returned no histogram\n"); fflush(stdout);
+                  }
                }
                else if (config.backend == "gpu") {
                   throw std::runtime_error("composite_image CUDA backend failed");
