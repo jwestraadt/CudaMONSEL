@@ -406,6 +406,38 @@ python tools/detector_postprocess.py <base>.json --csv <run>.csv
 It ships with `inlens_se`, `annular_bse`, and `etd_se` presets and writes a
 `<base>_detectors.png` montage of the synthesised channels.
 
+#### detectors (optional, inline channels — CPU + GPU)
+
+Instead of (or in addition to) the post-processed histogram, detector channels
+can be evaluated **inline during the run** on both backends and written straight
+to extra CSV columns (`det_<name>`) and optional per-detector PGM maps. Each
+detector is an acceptance box in (exit energy, take-off polar angle `β`), where
+`β` is measured from the outward optic axis (`−z`); 0° = up the column.
+
+```json
+"detectors": [
+  { "name": "T3_inlens", "preset": "inlens_se", "output_pgm": "img_T3.pgm" },
+  { "name": "BSE", "preset": "annular_bse",
+    "working_distance_mm": 5.0, "inner_radius_mm": 3.0, "outer_radius_mm": 8.0 },
+  { "name": "win", "energy_min_ev": 0.0, "energy_max_ev": 50.0,
+    "polar_min_deg": 0.0, "polar_max_deg": 15.0 }
+]
+```
+
+| Field | Description |
+|---|---|
+| `name` | Column/label (`det_<name>` in the CSV) |
+| `preset` | `inlens_se`, `annular_bse`, or `etd_se` — seeds the windows |
+| `energy_min_ev` / `energy_max_ev` | Energy window (eV); omit max for no upper bound |
+| `polar_min_deg` / `polar_max_deg` | Take-off angle window (deg from optic axis) |
+| `working_distance_mm` + `inner_radius_mm` + `outer_radius_mm` | Annulus geometry → angle window via `atan(r / WD)` |
+| `output_pgm` | Optional per-detector PGM map |
+
+Explicit fields override the preset. A full-acceptance detector
+(`energy 0..∞`, `β 0..90°`) reproduces the run's `total_yield` exactly on both
+backends — used as a built-in self-check. Azimuth is integrated out, so a
+side-mounted ETD is approximated by its polar-angle window.
+
 #### Full example — Ni gamma/gamma-prime precipitate at 1 kV
 
 See `CudaMONSEL/CudaMONSEL/gamma_precipitate_image_1kV.json` for the full working example. Key values:
