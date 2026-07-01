@@ -22,6 +22,8 @@
 #include "gov\nist\microanalysis\NISTMonte\RegionBase.cuh"
 #include "gov\nist\microanalysis\NISTMonte\Sphere.cuh"
 #include "gov\nist\microanalysis\NISTMonte\BackscatterStats.cuh"
+#include "gov\nist\microanalysis\NISTMonte\Electron.cuh"
+#include "gov\nist\microanalysis\EPQLibrary\FromSI.cuh"
 #include "gov\nist\microanalysis\Utility\Math2.cuh"
 #include "gov\nist\microanalysis\Utility\Histogram.cuh"
 
@@ -140,6 +142,18 @@ namespace CompositeImage
 
       // Optional inline detector channels (CPU + GPU).
       std::vector<DetectorConfig> detectors;
+
+      // Optional single-probe trajectory capture (CPU backend only): full electron
+      // paths for the 2D interaction-volume view + surface-escape records for the
+      // 3D escape-electron view. When enabled, forces a 1x1 scan at the scan center
+      // and the CPU backend.
+      bool        tcEnabled;
+      int         tcMaxFullPaths;        // primaries recorded in full (with their secondaries)
+      int         tcMaxEscapes;          // cap on surface-escape records
+      int         tcStepStride;          // keep every Nth scatter step (paths only)
+      bool        tcRecordSecondaries;   // record SE paths in the 2D view
+      bool        tcIncludeAbsorbed;     // keep absorbed (non-escaping) paths
+      std::string tcOutput;              // base name; writes <base>_traj.csv + <base>_escapes.csv
    };
 
    class SecondaryCountListener : public ActionListenerT
@@ -190,6 +204,194 @@ namespace CompositeImage
       std::vector<int>                                    mCounts;
    };
 
+   // Single-probe trajectory recorder (CPU backend only). Attaches to the same
+   // MonteCarloSS event stream as BackscatterStats and captures two products for
+   // the visualizations:
+   //   * full electron paths (primaries + secondaries) for the 2D
+   //     interaction-volume view (<base>_traj.csv), and
+   //   * per-electron surface-escape records (position + take-off direction) for
+   //     the 3D escape-electron view (<base>_escapes.csv).
+   // SE/BSE (energy threshold) and SE1/SE2 (Electron::getType) classification
+   // mirrors BackscatterStats exactly. The surface escape point comes from the
+   // last ExitMaterialEvent (region change into vacuum); BackscatterEvent fires
+   // far out at the chamber boundary and is used only to confirm the escape.
+   class TrajectoryRecorder : public ActionListenerT
+   {
+   public:
+      TrajectoryRecorder(const MonteCarloSS::MonteCarloSS& monte, double seThresholdJ,
+                         int maxFullPaths, int maxEscapeEvents, int stepStride,
+                         bool recordSecondaries, bool includeAbsorbed)
+         : mMonte(monte), mSeThreshJ(seThresholdJ),
+           mMaxFullPaths(maxFullPaths < 0 ? 0 : maxFullPaths),
+           mMaxEscapes(maxEscapeEvents < 0 ? 0 : maxEscapeEvents),
+           mStride(stepStride < 1 ? 1 : stepStride),
+           mRecordSecondaries(recordSecondaries), mIncludeAbsorbed(includeAbsorbed) {}
+
+      void actionPerformed(const int ae) override
+      {
+         const Electron::Electron& el = mMonte.getElectron();
+         const long id = el.getIdent();
+
+         if (ae == MonteCarloSS::TrajectoryStartEvent) {
+            mRecordingThis = (mPrimaryCount < mMaxFullPaths);
+            ++mPrimaryCount;
+            if (mRecordingThis) openPath(el);
+         }
+         else if (ae == MonteCarloSS::StartSecondaryEvent) {
+            // Fires twice (once as parent, once as the switched-in secondary);
+            // lazily open only the not-yet-seen new secondary ident.
+            if (mRecordSecondaries && mRecordingThis && mPaths.find(id) == mPaths.end())
+               openPath(el);
+         }
+         else if (ae == MonteCarloSS::ScatterEvent) {
+            if (mRecordingThis) appendPt(el, true);
+         }
+         else if (ae == MonteCarloSS::NonScatterEvent) {
+            if (mRecordingThis) appendPt(el, false);
+         }
+         else if (ae == MonteCarloSS::ExitMaterialEvent) {
+            if (mRecordingThis) appendPt(el, false);
+            // Candidate surface crossing (also fires on beam entry and on
+            // internal matrix/precipitate boundaries; the last one before the
+            // terminal BackscatterEvent is the true surface escape).
+            const auto p = el.getPosition();
+            ExitState& ex = mLastExit[id];
+            ex.x = p[0]; ex.y = p[1]; ex.z = p[2];
+            ex.energyJ = el.getEnergy();
+            ex.theta = el.getTheta(); ex.phi = el.getPhi();
+            ex.has = true;
+         }
+         else if (ae == MonteCarloSS::BackscatterEvent) {
+            finalizeEscape(el, id);
+         }
+         else if (ae == MonteCarloSS::TrajectoryEndEvent) {
+            flushTrajectory();
+         }
+      }
+
+      void writeCsvs(const std::string& base) const
+      {
+         const std::string trajPath = base + "_traj.csv";
+         std::ofstream tf(trajPath.c_str());
+         if (tf.good()) {
+            tf << "traj_id,parent_id,gen,elec_type,exit_type,seg,x_nm,y_nm,z_nm,energy_ev\n";
+            for (const Path& p : mOutPaths)
+               for (size_t s = 0; s < p.pts.size(); ++s) {
+                  const Pt& pt = p.pts[s];
+                  tf << p.ident << "," << p.parentID << "," << p.gen << ","
+                     << typeName(p.type) << "," << p.exitType << "," << s << ","
+                     << pt.x * 1.e9 << "," << pt.y * 1.e9 << "," << pt.z * 1.e9 << ","
+                     << pt.energyEv << "\n";
+               }
+         }
+         const std::string escPath = base + "_escapes.csv";
+         std::ofstream ef(escPath.c_str());
+         if (ef.good()) {
+            ef << "traj_id,elec_type,exit_type,x_nm,y_nm,z_nm,exit_energy_ev,theta_deg,phi_deg\n";
+            for (const EscapeRec& e : mOutEscapes)
+               ef << e.ident << "," << typeName(e.type) << "," << e.exitType << ","
+                  << e.x * 1.e9 << "," << e.y * 1.e9 << "," << e.z * 1.e9 << ","
+                  << e.energyEv << "," << e.thetaDeg << "," << e.phiDeg << "\n";
+         }
+         printf("CompositeImage: trajectories --> %s (%zu paths); escapes --> %s (%zu records)\n",
+                trajPath.c_str(), mOutPaths.size(), escPath.c_str(), mOutEscapes.size());
+         fflush(stdout);
+      }
+
+   private:
+      struct Pt { double x, y, z, energyEv; };
+      struct Path {
+         long        ident = 0;
+         long        parentID = 0;
+         int         gen = 0;
+         int         type = 0;              // 0 PRIMARY, 1 SE1, 2 SE2
+         std::string exitType = "ABSORBED"; // BSE / SE1 / SE2 / SE / ABSORBED
+         std::vector<Pt> pts;
+         long        scatterSeen = 0;       // for step-stride downsampling
+      };
+      struct ExitState { double x = 0, y = 0, z = 0, energyJ = 0, theta = 0, phi = 0; bool has = false; };
+      struct EscapeRec { long ident; int type; std::string exitType;
+                         double x, y, z, energyEv, thetaDeg, phiDeg; };
+
+      static const char* typeName(int t) { return t == 1 ? "SE1" : (t == 2 ? "SE2" : "PRIMARY"); }
+
+      std::string classifyExit(double energyJ, int type) const
+      {
+         if (energyJ >= mSeThreshJ) return "BSE";           // > SE threshold ⇒ BSE (any type)
+         if (type == 1) return "SE1";
+         if (type == 2) return "SE2";
+         return "SE";                                       // low-energy primary escape (rare)
+      }
+
+      void openPath(const Electron::Electron& el)
+      {
+         Path p;
+         p.ident    = el.getIdent();
+         p.parentID = el.getParentID();
+         p.gen      = mMonte.getElectronGeneration();
+         p.type     = (int)el.getType();
+         const auto pos = el.getPosition();
+         p.pts.push_back({ pos[0], pos[1], pos[2], FromSI::eV(el.getEnergy()) });
+         mPaths.emplace(p.ident, std::move(p));
+      }
+
+      void appendPt(const Electron::Electron& el, bool strided)
+      {
+         auto it = mPaths.find(el.getIdent());
+         if (it == mPaths.end()) return;
+         Path& p = it->second;
+         if (strided && (p.scatterSeen++ % mStride) != 0) return;
+         const auto pos = el.getPosition();
+         const double x = pos[0], y = pos[1], z = pos[2];
+         if (!p.pts.empty()) {
+            const Pt& last = p.pts.back();
+            const double dx = x - last.x, dy = y - last.y, dz = z - last.z;
+            if (dx * dx + dy * dy + dz * dz < 1.e-26) return;   // dedupe sub-pm nudges
+         }
+         p.pts.push_back({ x, y, z, FromSI::eV(el.getEnergy()) });
+      }
+
+      void finalizeEscape(const Electron::Electron& el, long id)
+      {
+         auto ex = mLastExit.find(id);
+         if (ex == mLastExit.end() || !ex->second.has) return;   // never crossed the surface
+         const ExitState& s = ex->second;
+         const std::string et = classifyExit(s.energyJ, (int)el.getType());
+         auto it = mPaths.find(id);
+         if (it != mPaths.end()) it->second.exitType = et;
+         if ((int)mOutEscapes.size() < mMaxEscapes)
+            mOutEscapes.push_back({ id, (int)el.getType(), et, s.x, s.y, s.z,
+                                    FromSI::eV(s.energyJ),
+                                    s.theta * 180.0 / Math2::PI, s.phi * 180.0 / Math2::PI });
+      }
+
+      void flushTrajectory()
+      {
+         if (mRecordingThis)
+            for (auto& kv : mPaths) {
+               Path& p = kv.second;
+               if (!mIncludeAbsorbed && p.exitType == "ABSORBED") continue;
+               mOutPaths.push_back(std::move(p));
+            }
+         mPaths.clear();
+         mLastExit.clear();
+         mRecordingThis = false;
+      }
+
+      const MonteCarloSS::MonteCarloSS& mMonte;
+      double mSeThreshJ;
+      int    mMaxFullPaths, mMaxEscapes, mStride;
+      bool   mRecordSecondaries, mIncludeAbsorbed;
+
+      std::map<long, Path>      mPaths;      // full paths for the current trajectory (if recording)
+      std::map<long, ExitState> mLastExit;   // last surface crossing per electron (for escapes)
+      bool mRecordingThis = false;
+      int  mPrimaryCount  = 0;
+
+      std::vector<Path>      mOutPaths;
+      std::vector<EscapeRec> mOutEscapes;
+   };
+
    static void addElement(PhaseConfig& phase, const ElementT* element, double fraction)
    {
       phase.elements.push_back(element);
@@ -217,6 +419,13 @@ namespace CompositeImage
       config.escapeHistOutput       = "";
       config.escapeHistRadialBins   = 0;
       config.escapeHistRadialMaxNm  = 0.0;
+      config.tcEnabled              = false;
+      config.tcMaxFullPaths         = 300;
+      config.tcMaxEscapes           = 5000;
+      config.tcStepStride           = 1;
+      config.tcRecordSecondaries    = true;
+      config.tcIncludeAbsorbed      = true;
+      config.tcOutput               = "";
       config.scattering.elastic     = "nist_mott";
       config.scattering.inelastic   = "fitted";
       config.scattering.csd         = "joy_luo_nieminen";
@@ -543,6 +752,17 @@ namespace CompositeImage
             config.detectors.push_back(readDetectorConfig(detsJson->arrayValue[i], config.seThresholdEv));
       }
 
+      const RuntimeInput::JsonValue* tcJson = findAny(src, "trajectory_capture", "trajectory_viz");
+      if (tcJson && tcJson->isObject()) {
+         config.tcEnabled           = tcJson->boolOr("enabled", true);
+         config.tcMaxFullPaths      = (int)numberOr(*tcJson, (double)config.tcMaxFullPaths, "max_full_paths", "max_paths");
+         config.tcMaxEscapes        = (int)numberOr(*tcJson, (double)config.tcMaxEscapes, "max_escape_events", "max_escapes");
+         config.tcStepStride        = (int)numberOr(*tcJson, (double)config.tcStepStride, "step_stride");
+         config.tcRecordSecondaries = tcJson->boolOr("record_secondaries", config.tcRecordSecondaries);
+         config.tcIncludeAbsorbed   = tcJson->boolOr("include_absorbed", config.tcIncludeAbsorbed);
+         config.tcOutput            = stringOr(*tcJson, config.tcOutput, "output", "output_base");
+      }
+
       if (config.trajectoriesPerPixel <= 0) throw std::runtime_error("composite_image trajectories_per_pixel must be positive");
       if (config.beamEnergyEv <= 0.0)       throw std::runtime_error("composite_image beam_energy_ev must be positive");
       if (config.scan.nxPixels <= 0 || config.scan.nyPixels <= 0)
@@ -557,6 +777,29 @@ namespace CompositeImage
          throw std::runtime_error("composite_image backend must be auto, cpu, or gpu");
       if (config.escapeHistEnabled && config.escapeHistAngleBins < 1)
          throw std::runtime_error("composite_image escape_histogram angle_bins must be positive");
+
+      // Trajectory capture is a single-probe, CPU-only diagnostic. Normalize the
+      // config so it runs one trajectory batch at the scan center on the CPU.
+      if (config.tcEnabled) {
+         if (config.tcStepStride < 1)   config.tcStepStride = 1;
+         if (config.tcMaxFullPaths < 0) config.tcMaxFullPaths = 0;
+         if (config.tcMaxEscapes < 0)   config.tcMaxEscapes = 0;
+         if (config.tcOutput.empty()) {
+            std::string base = config.outputCsv;
+            size_t dot = base.find_last_of('.');
+            if (dot != std::string::npos) base = base.substr(0, dot);
+            config.tcOutput = base;
+         }
+         if (config.backend == "gpu")
+            printf("  NOTE: trajectory_capture forces the CPU backend (the GPU kernel does not stream per-step paths)\n");
+         config.backend = "cpu";
+         if (config.scan.nxPixels != 1 || config.scan.nyPixels != 1) {
+            printf("  NOTE: trajectory_capture uses a single probe at scan center (%.1f, %.1f) nm; forcing a 1x1 scan\n",
+                   config.scan.centerXNm, config.scan.centerYNm);
+            config.scan.nxPixels = 1;
+            config.scan.nyPixels = 1;
+         }
+      }
 
       return config;
    }
@@ -1075,8 +1318,11 @@ namespace CompositeImage
       for (int px = 0; px < totalPixels; ++px) {
          int    row = px / nx;
          int    col = px % nx;
-         double x   = cx - hw + col * dxm;
-         double y   = cy + hw - row * dym;
+         // Single-probe trajectory capture parks the beam exactly at the scan
+         // center; the raster formula would otherwise land the 1x1 pixel at the
+         // (cx-hw, cy+hw) corner.
+         double x   = config.tcEnabled ? cx : (cx - hw + col * dxm);
+         double y   = config.tcEnabled ? cy : (cy + hw - row * dym);
 
          // Per-worker scatter models.
          // MONSEL_MaterialScatterModel caches scatter rates in mutable member
@@ -1165,7 +1411,23 @@ namespace CompositeImage
          monte_t.addActionListener(back_t);
          monte_t.addActionListener(secondary_t);
          if (nDet > 0) monte_t.addActionListener(detector_t);
+
+         // Single-probe trajectory/escape capture (CPU only; totalPixels == 1 here).
+         std::unique_ptr<TrajectoryRecorder> traj_up;
+         if (config.tcEnabled) {
+            traj_up = std::make_unique<TrajectoryRecorder>(
+               monte_t, ToSI::eV(config.seThresholdEv),
+               config.tcMaxFullPaths, config.tcMaxEscapes, config.tcStepStride,
+               config.tcRecordSecondaries, config.tcIncludeAbsorbed);
+            monte_t.addActionListener(*traj_up);
+         }
+
          monte_t.runMultipleTrajectories(config.trajectoriesPerPixel);
+
+         if (config.tcEnabled) {
+            monte_t.removeActionListener(*traj_up);
+            traj_up->writeCsvs(config.tcOutput);
+         }
          if (nDet > 0) monte_t.removeActionListener(detector_t);
          monte_t.removeActionListener(secondary_t);
          monte_t.removeActionListener(back_t);
