@@ -82,6 +82,7 @@ namespace CompositeImage
       double centerXNm;
       double centerYNm;
       double centerDepthNm;
+      bool   isVoid;        // true => vacuum sphere (etched-out particle), no scatter inside
    };
 
    struct SurfaceLayerConfig
@@ -98,6 +99,8 @@ namespace CompositeImage
       double halfWidthNm;  // half field-of-view (scan covers ±halfWidthNm in x and y)
       int    nxPixels;
       int    nyPixels;
+      bool   radial;       // true => 1-D radial line: nx samples at (r,0), r in [0, radialMaxNm]
+      double radialMaxNm;  // outer radius of the radial line scan
    };
 
    // One synthesised detector channel: an (energy, take-off-angle) acceptance box.
@@ -124,6 +127,7 @@ namespace CompositeImage
       double      beamSizeNm;
       double      seThresholdEv;
       double      histogramBinSizeEv;
+      bool        trackSecondaries;   // false => BSE-only (skip SE tracking; GPU only)
       std::string backend;
       unsigned long long rngSeed;
       ScatteringConfig   scattering;
@@ -412,6 +416,7 @@ namespace CompositeImage
       config.beamSizeNm             = 0.5;
       config.seThresholdEv          = 50.0;
       config.histogramBinSizeEv     = 10.0;
+      config.trackSecondaries       = true;
       config.backend                = "auto";
       config.rngSeed                = 0x5eed1234ULL;
       config.escapeHistEnabled      = false;
@@ -465,12 +470,15 @@ namespace CompositeImage
       config.precipitate.centerXNm     = 0.0;
       config.precipitate.centerYNm     = 0.0;
       config.precipitate.centerDepthNm = 0.0;   // centroid on surface
+      config.precipitate.isVoid        = false;
 
       config.scan.centerXNm  = 0.0;
       config.scan.centerYNm  = 0.0;
       config.scan.halfWidthNm = 90.0;           // 180 nm field of view
       config.scan.nxPixels   = 64;
       config.scan.nyPixels   = 64;
+      config.scan.radial     = false;
+      config.scan.radialMaxNm = 0.0;
 
       config.surfaceLayer.enabled     = false;
       config.surfaceLayer.thicknessNm = 0.0;
@@ -608,6 +616,14 @@ namespace CompositeImage
                                 "half_width_nm", "fov_half_nm", "half_fov_nm");
       sc.nxPixels    = (int)numberOr(json, (double)sc.nxPixels, "nx_pixels", "nx");
       sc.nyPixels    = (int)numberOr(json, (double)sc.nyPixels, "ny_pixels", "ny");
+      sc.radial      = json.boolOr("radial", sc.radial);
+      sc.radialMaxNm = numberOr(json, sc.radialMaxNm, "radial_max_nm");
+      if (sc.radial) {
+         // 1-D radial line: nx samples along (r,0); one row.
+         sc.nyPixels = 1;
+         if (sc.radialMaxNm <= 0.0)
+            throw std::runtime_error("composite_image radial scan requires positive radial_max_nm");
+      }
       return sc;
    }
 
@@ -699,6 +715,7 @@ namespace CompositeImage
       config.histogramBinSizeEv   = numberOr(src, config.histogramBinSizeEv,
                                              "histogram_bin_size_ev", "bin_size_ev");
       config.backend              = normalizeModelName(stringOr(src, config.backend, "backend", "execution_backend"));
+      config.trackSecondaries     = src.boolOr("track_secondaries", config.trackSecondaries);
       config.rngSeed              = (unsigned long long)numberOr(src, (double)config.rngSeed, "rng_seed", "seed");
 
       const RuntimeInput::JsonValue* scattering = src.find("scattering");
@@ -723,6 +740,7 @@ namespace CompositeImage
          config.precipitate.centerXNm     = numberOr(*precipJson, config.precipitate.centerXNm,     "center_x_nm",     "x_nm");
          config.precipitate.centerYNm     = numberOr(*precipJson, config.precipitate.centerYNm,     "center_y_nm",     "y_nm");
          config.precipitate.centerDepthNm = numberOr(*precipJson, config.precipitate.centerDepthNm, "center_depth_nm", "depth_nm");
+         config.precipitate.isVoid        = precipJson->boolOr("void", config.precipitate.isVoid);
       }
 
       const RuntimeInput::JsonValue* scanJson = src.find("scan");
@@ -767,7 +785,8 @@ namespace CompositeImage
       if (config.beamEnergyEv <= 0.0)       throw std::runtime_error("composite_image beam_energy_ev must be positive");
       if (config.scan.nxPixels <= 0 || config.scan.nyPixels <= 0)
          throw std::runtime_error("composite_image scan nx_pixels and ny_pixels must be positive");
-      if (config.scan.halfWidthNm <= 0.0)   throw std::runtime_error("composite_image scan half_width_nm must be positive");
+      if (!config.scan.radial && config.scan.halfWidthNm <= 0.0)
+         throw std::runtime_error("composite_image scan half_width_nm must be positive");
       if (config.precipitate.radiusNm <= 0.0) throw std::runtime_error("composite_image precipitate radius_nm must be positive");
       if (config.precipitate.centerDepthNm <= -config.precipitate.radiusNm)
          throw std::runtime_error("composite_image precipitate center_depth_nm must be > -radius_nm (sphere is entirely above the surface)");
@@ -980,7 +999,9 @@ namespace CompositeImage
       gpu.mats[0] = makeVacuumGpuMaterial();
       gpu.mats[1] = hasSL ? makeGpuMaterial(config.surfaceLayer.phase, elementIndex, gpu.elems) : makeVacuumGpuMaterial();
       gpu.mats[2] = makeGpuMaterial(matrix, elementIndex, gpu.elems);
-      gpu.mats[3] = makeGpuMaterial(precip, elementIndex, gpu.elems);
+      gpu.mats[3] = config.precipitate.isVoid
+         ? makeVacuumGpuMaterial()                                  // etched-out void: no scatter inside
+         : makeGpuMaterial(precip, elementIndex, gpu.elems);
 
       gpu.geom.precipCx = precipCenter[0];
       gpu.geom.precipCy = precipCenter[1];
@@ -994,11 +1015,21 @@ namespace CompositeImage
       gpu.ny = ny;
       gpu.pixelX.resize(nx * ny);
       gpu.pixelY.resize(nx * ny);
-      for (int row = 0; row < ny; ++row) {
+      if (config.scan.radial) {
+         // 1-D radial line: nx beam positions at (r, 0), r in [0, radialMaxNm].
+         const double dr = (nx > 1) ? (config.scan.radialMaxNm * 1.e-9 / (nx - 1)) : 0.0;
          for (int col = 0; col < nx; ++col) {
-            int idx = row * nx + col;
-            gpu.pixelX[idx] = cx - hw + col * dxm;
-            gpu.pixelY[idx] = cy + hw - row * dym;
+            gpu.pixelX[col] = col * dr;
+            gpu.pixelY[col] = 0.0;
+         }
+      }
+      else {
+         for (int row = 0; row < ny; ++row) {
+            for (int col = 0; col < nx; ++col) {
+               int idx = row * nx + col;
+               gpu.pixelX[idx] = cx - hw + col * dxm;
+               gpu.pixelY[idx] = cy + hw - row * dym;
+            }
          }
       }
 
@@ -1008,6 +1039,7 @@ namespace CompositeImage
       gpu.trajPerPixel = config.trajectoriesPerPixel;
       gpu.seThresholdJ = ToSI::eV(config.seThresholdEv);
       gpu.seed = config.rngSeed;
+      gpu.trackSecondaries = config.trackSecondaries;
 
       gpu.histEnabled    = config.escapeHistEnabled;
       gpu.histNBbins     = config.escapeHistAngleBins;
@@ -1321,8 +1353,17 @@ namespace CompositeImage
          // Single-probe trajectory capture parks the beam exactly at the scan
          // center; the raster formula would otherwise land the 1x1 pixel at the
          // (cx-hw, cy+hw) corner.
-         double x   = config.tcEnabled ? cx : (cx - hw + col * dxm);
-         double y   = config.tcEnabled ? cy : (cy + hw - row * dym);
+         double x, y;
+         if (config.scan.radial) {                     // 1-D radial line: (r, 0)
+            double dr = (nx > 1) ? (config.scan.radialMaxNm * 1.e-9 / (nx - 1)) : 0.0;
+            x = col * dr;
+            y = 0.0;
+         }
+         else if (config.tcEnabled) { x = cx; y = cy; } // single probe at scan center
+         else {
+            x = cx - hw + col * dxm;
+            y = cy + hw - row * dym;
+         }
 
          // Per-worker scatter models.
          // MONSEL_MaterialScatterModel caches scatter rates in mutable member
@@ -1396,7 +1437,9 @@ namespace CompositeImage
          RegionT                bulkRegion_t(bulkParent, &matMSM_t, (NormalShapeT*)&surface_t);
 
          SphereT                precipSphere_t(precipCenter, precipRadius);
-         RegionT                precipRegion_t(&bulkRegion_t, &precMSM_t, &precipSphere_t);
+         RegionT                precipRegion_t(&bulkRegion_t,
+                                                config.precipitate.isVoid ? &vacMSM_t : &precMSM_t,
+                                                &precipSphere_t);
 
          // Start beam above: the sphere apex, and (when a surface layer is present)
          // above the top of that layer, so the initial region lookup is always vacuum.
@@ -1490,10 +1533,12 @@ namespace CompositeImage
       printf("\nCompositeImage: scan complete in %.1f s\n", elapsed.count()); fflush(stdout);
 
       // Write CSV in scan order (row-major) after the parallel section.
+      const double radialDr = (config.scan.radial && nx > 1)
+         ? (config.scan.radialMaxNm * 1.e-9 / (nx - 1)) : 0.0;
       for (int row = 0; row < ny; ++row) {
          for (int col = 0; col < nx; ++col) {
-            double x     = cx - hw + col * dxm;
-            double y     = cy + hw - row * dym;
+            double x     = config.scan.radial ? (col * radialDr) : (cx - hw + col * dxm);
+            double y     = config.scan.radial ? 0.0 : (cy + hw - row * dym);
             double total = seMap[row][col] + bseMap[row][col];
             csvFile << x * 1.e9 << "," << y * 1.e9 << ","
                     << seMap[row][col]  << "," << se1Map[row][col] << ","

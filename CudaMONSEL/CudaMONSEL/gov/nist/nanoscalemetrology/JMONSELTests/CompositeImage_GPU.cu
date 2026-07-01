@@ -78,6 +78,7 @@ namespace CompositeImageGPU
          double beamSizeM;
          double beamStartZ;
          double seThresholdJ;
+         bool   trackSecondaries;  // false => skip SE generation/tracking (BSE-only, primary eta unchanged)
          unsigned long long seed;
          int*   escapeHist;        // per-pixel [type][energy_bin][angle_bin], nullptr if disabled
          int    histNType;         // 3: 0=SE1, 1=SE2, 2=other (BSE/primary)
@@ -726,7 +727,10 @@ namespace CompositeImageGPU
                   if (pick < elasticRate) {
                      scatterElastic(e, mat, cfg.elems, cumulativeElastic, elasticRate, rng);
                   }
-                  else {
+                  else if (cfg.trackSecondaries) {
+                     // Inelastic events do not deflect or de-energize the primary
+                     // (its loss is entirely CSD), so skipping SE tracking leaves
+                     // the backscatter coefficient unchanged but is far cheaper.
                      ElectronState secondary;
                      if (scatterInelastic(e, mat, secondary, rng) && stackTop < MAX_SECONDARY_STACK) {
                         secondary.type = (cos(e.theta) > 0.0) ? TYPE_SE1 : TYPE_SE2;
@@ -864,6 +868,7 @@ namespace CompositeImageGPU
          kcfg.beamSizeM = cfg.beamSizeM;
          kcfg.beamStartZ = cfg.beamStartZ;
          kcfg.seThresholdJ = cfg.seThresholdJ;
+         kcfg.trackSecondaries = cfg.trackSecondaries;
          kcfg.seed = cfg.seed == 0 ? 0x123456789abcdef0ULL : cfg.seed;
          kcfg.escapeHist = dHist;   // nullptr when histogram disabled
          kcfg.histNType = HIST_NTYPE;
