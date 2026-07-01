@@ -54,6 +54,9 @@ surface), so it is effectively a hemisphere/partial sphere:
   `[type][energy][angle]`, or a **radial** variant binned by escape distance
   from the beam (`radial_nbins`, `radial_max_nm`) for PSF / delocalization
   analysis.
+- **`trajectory_capture`** — single-probe (CPU-only) capture of full electron
+  paths + surface-escape records for the interaction-volume / escape-electron
+  visualizations (see §G). Forces a 1×1 scan and the CPU backend.
 
 ---
 
@@ -157,6 +160,113 @@ sweep carbon 0 → 1.0 nm in 0.2 nm steps (6 sims), `64×64`, 4000 traj/px.
 > dark signal *opposite in sign* to the SE; in real René 65 the most likely
 > physical driver of the measured inversion is **differential carbon
 > contamination** on γ′, not a bulk density difference.
+
+### G. Single-probe trajectory / interaction-volume captures (René 65 γ)
+Park the beam at a single point over the René 65 γ matrix and record the actual
+electron **paths** (not a raster image) for visualization: the interaction
+volume and the escaping-electron distribution, split SE1/SE2/BSE. These run on
+the **CPU backend** and write CSVs consumed by `tools/trajectory_plot.py`.
+
+**Pure γ matrix** (precipitate parked far off-axis) — `traj_r65g_{200V,1kV,2kV,4kV}.json`,
+20k/20k/20k/15k traj, `max_full_paths 250`. Volume grows ~4 nm → ~80 nm teardrop.
+
+**Exposed γ′ half-sphere at the probe** — `traj_r65gp_{200V,1kV,2kV,4kV}.json`,
+20k/20k/20k/15k traj, `max_full_paths 500`. The beam sits on a René 65 γ′
+half-sphere (r = 30 nm, flush) in the γ matrix; the 2D view shades the **γ′
+precipitate** (purple) vs the **γ matrix** (green). The interaction volume is
+contained in the γ′ at ≤ 1 keV, fills it at 2 keV, and overflows into the
+surrounding γ at 4 keV.
+
+**Carbon overlayer sweep on the γ′ half-sphere** — `traj_gpc_{200V,1kV}.json`
+(6 sims each: carbon 0 / 0.2 / 0.4 / 0.6 / 0.8 / 1.0 nm over the flush René 65 γ′
+half-sphere). Renders a carbon(row) × energy(col) matrix of 2D cross-sections
+(carbon band shaded dark) plus a **T3 total-signal** (SE1+SE2+BSE, full
+collection ≈ immersion + beam deceleration) vs carbon curve:
+```
+python tools/trajectory_plot.py --carbon-matrix --prefix traj_gpc \
+    --energies 200V 1kV --carbons 0p0 0p2 0p4 0p6 0p8 1p0
+```
+→ `traj_gpc_matrix.png`, `traj_gpc_total_signal.png`, and
+`traj_gpc_psf3d_matrix.png` (a 2×6 escape-density PSF grid, rows = energy, cols =
+carbon). The PSF is absolute areal density per incident electron (not
+peak-normalized); `--psf-scale log` (default, shows shape/tail),
+`linear` (absolute magnitude — the peaks visibly shrink as carbon cuts the
+signal, `*_psf3d_matrix_linear.png`), or `both`. Shows carbon stripping the
+shallow SE first: at 1 keV the BSE
+floor (~0.30) is preserved while SE collapses; at 200 eV even the
+(stopping-dominated) >50 eV signal falls, so the total drops further.
+
+**Total-signal images + inversion demo** — `image_gpc_{200V,1kV}.json` (GPU
+raster, 96×96, ±60 nm FOV, 6 carbon steps each) produce the actual
+precipitate/matrix **T3 total-signal images**. Render an `image_denseP`-style
+figure per energy (2×3 image grid + SE / BSE / total precip-core-vs-matrix
+contrast, with the bright→dark inversion marked):
+```
+python tools/trajectory_plot.py --inversion --img-prefix image_gpc \
+    --energies 200V 1kV --carbons 0p0 0p2 0p4 0p6 0p8 1p0
+```
+→ `image_gpc_200V_inversion.png` / `image_gpc_1kV_inversion.png`. René 65 γ′ is
+SE-bright (lower φ) and weakly BSE-dark (similar Z), so the combined T3 signal
+**inverts bright→dark as carbon strips the SE** — at ~0.69 nm (200 eV) and
+~0.40 nm (1 keV). The inversion is milder than the synthetic `image_denseP`
+case because the real γ/γ′ BSE contrast is small (~1–3 %).
+
+> **CPU surface-layer fix:** running a `surface_layer` on the CPU backend used
+> to crash (access violation) — the layer's boundary plane was scoped to the
+> `if (hasSL)` block while `NormalMultiPlaneShape::contains()` kept a pointer to
+> it. The plane is now hoisted to outlive the shape (`CompositeImage.cu`). This
+> also unblocks any CPU `composite_image` run that uses a surface layer.
+
+Each deck sets a `trajectory_capture` block and a `1×1` scan; the driver forces
+the CPU backend (the GPU kernel does not stream per-step paths) and parks the
+probe at the scan center. Trajectory counts are high (15–20k) so the escape PSF
+has good radial statistics; `max_full_paths` caps the 2D paths.
+Two CSVs are written per run:
+- `<base>_traj.csv` — full electron paths (primaries + secondaries) → 2D
+  interaction-volume view.
+- `<base>_escapes.csv` — per-electron surface-escape records (position, take-off
+  `θ/φ`, type, energy) → 3D escape views.
+
+**Per-energy figures** (`tools/trajectory_plot.py`, matplotlib):
+```
+python tools/trajectory_plot.py traj_r65g_200V --title "Rene 65 gamma - 200 eV"
+```
+writes `<base>_iv2d.png` (x–z interaction volume) and `<base>_psf3d.png` (radial
+escape-density PSF surface: log areal density, colored by the **dominant**
+escaping type at each radius — SE1 core, BSE/SE2 skirt). `--mode` also offers
+`escape3d` (discrete take-off vectors) and `all`.
+
+**Common-scale montages** (`--grid`, for comparing energies):
+```
+python tools/trajectory_plot.py --grid traj_r65g_200V traj_r65g_1kV \
+    traj_r65g_2kV traj_r65g_4kV --labels "200 eV" "1 keV" "2 keV" "4 keV"
+```
+writes `traj_r65g_iv2d_grid.png` (interaction volumes on one x/z scale — the
+volume grows ~20× from 200 eV to 4 keV) and `traj_r65g_psf3d_grid.png` (escape
+PSFs on a common ±30 nm, log-z scale — the SE1 core stays put while the BSE/SE2
+footprint spreads with energy).
+
+Colors — trajectories: **BSE red**, **SE1 green**, **SE2 orange**, absorbed
+primary faint gray. PSF dominant-type: **SE1 blue**, **SE2 orange**, **BSE
+green**. Flags: `--mode`, `--max-se` (2D SE cap), `--rmax`/`--nbins`/`--floor`
+(PSF radial extent / bins / log floor), `--traj` (PSF normalization override;
+otherwise read from the deck), `--elev`/`--azim` (3D view).
+
+**`trajectory_capture` fields** — `max_full_paths` (primaries drawn in full,
+default 300, with their secondaries), `max_escape_events` (escape-record cap,
+5000), `step_stride` (keep every Nth scatter step in the paths), `record_secondaries`,
+`include_absorbed`, `output` (base name; defaults to `output_csv` sans extension).
+
+> **Backend note:** captures run on the CPU. The scattering models match the GPU
+> production runs and the free-surface barrier is handled the same way on both
+> backends. For an **exposed precipitate** (`traj_r65gp_*`), an SE leaving the γ′
+> flat face crosses the z = 0 surface, and `RegionBase::findEndOfStep` clips the
+> step to that surface plane (the sub-region boundary-escape fix, commit
+> `36530da`), so `ExpQMBarrierSM` gets the physical outward normal `{0,0,-1}` and
+> gates escape on the perpendicular energy — matching the GPU flat-face fix.
+> Verified: on the exposed γ′ half-sphere at 200 eV the CPU and GPU agree to ~1 %
+> (SE 0.755 vs 0.763, SE1 0.475 vs 0.474), so the γ′ SE yields are quantitative,
+> not just illustrative.
 
 ---
 

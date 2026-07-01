@@ -117,6 +117,7 @@ namespace CompositeImageGPU
       // Simulation
       int    trajPerPixel;
       double seThresholdJ;                   // SE/BSE energy cutoff (J)
+      bool   trackSecondaries = true;        // false => BSE-only (skip SE tracking)
       unsigned long long seed;               // deterministic base seed
 
       // Optional per-pixel (escape energy x take-off angle) histogram.

@@ -1,0 +1,3126 @@
+{
+ "schema_version": 1,
+ "run_tests": false,
+ "simulations": [
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": -20.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": -15.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": -10.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": -5.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": 5.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": 10.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": 15.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": 20.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R25_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R25_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 100.0,
+    "nx_pixels": 31,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 25.0,
+    "center_depth_nm": 25.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": -60.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": -45.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": -30.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": -15.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": 15.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": 30.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": 45.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": 60.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R75_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R75_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 300.0,
+    "nx_pixels": 92,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 75.0,
+    "center_depth_nm": 75.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": -100.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": -75.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": -50.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": -25.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": 25.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": 50.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": 75.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": 100.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R125_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R125_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 500.0,
+    "nx_pixels": 153,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 125.0,
+    "center_depth_nm": 125.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": -140.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": -105.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": -70.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": -35.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": 35.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": 70.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": 105.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": 140.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R175_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R175_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 700.0,
+    "nx_pixels": 214,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 175.0,
+    "center_depth_nm": 175.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": -180.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": -135.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": -90.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": -45.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": 45.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": 90.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": 135.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": 180.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R225_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R225_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 900.0,
+    "nx_pixels": 275,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 225.0,
+    "center_depth_nm": 225.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xp08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xp08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": -220.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xp06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xp06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": -165.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xp04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xp04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": -110.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xp02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xp02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": -55.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xp00",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xp00.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": -0.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xm02",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xm02.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": 55.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xm04",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xm04.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": 110.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xm06",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xm06.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": 165.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xm08",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xm08.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": 220.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  },
+  {
+   "type": "composite_image",
+   "name": "void_12kV_R275_xm10",
+   "enabled": true,
+   "output_csv": "studies/5_void_transfer/data/void_12kV_R275_xm10.csv",
+   "beam_energy_ev": 12000.0,
+   "beam_size_nm": 1.3589,
+   "trajectories_per_pixel": 5000,
+   "secondary_electron_threshold_ev": 50.0,
+   "histogram_bin_size_ev": 10.0,
+   "backend": "gpu",
+   "track_secondaries": false,
+   "scattering": {
+    "elastic": "nist_mott",
+    "inelastic": "fitted",
+    "csd": "joy_luo_nieminen",
+    "barrier": "exp_qm"
+   },
+   "scan": {
+    "radial": true,
+    "radial_max_nm": 1100.0,
+    "nx_pixels": 337,
+    "ny_pixels": 1
+   },
+   "matrix_phase": {
+    "name": "Rene104",
+    "density_kg_m3": 8250.0,
+    "work_function_ev": 4.8,
+    "fermi_energy_ev": 8.0,
+    "bandgap_ev": 0.0,
+    "secondary_generation_energy_ev": 30.0,
+    "break_energy_ev": 45.0,
+    "composition": {
+     "Ni": 49.3,
+     "Co": 20.1,
+     "Cr": 14.5,
+     "Al": 7.2,
+     "Ti": 4.7,
+     "Mo": 2.3,
+     "Ta": 0.8,
+     "W": 0.65
+    }
+   },
+   "precipitate": {
+    "shape": "sphere",
+    "radius_nm": 275.0,
+    "center_depth_nm": 275.0,
+    "center_x_nm": 0.0,
+    "center_y_nm": 0.0,
+    "void": true
+   }
+  }
+ ]
+}

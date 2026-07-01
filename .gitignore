@@ -161,6 +161,7 @@ ClientBin/
 *.publishsettings
 node_modules/
 .claude/
+__pycache__/
 
 # RIA/Silverlight projects
 Generated_Code/
@@ -234,3 +235,13 @@ CudaMONSEL/CudaMONSEL/image_*.png
 CudaMONSEL/CudaMONSEL/se1_se2_*.png
 CudaMONSEL/CudaMONSEL/yield_barcharts.png
 CudaMONSEL/CudaMONSEL/bse_contrast_barchart.png
+
+# Single-probe trajectory-capture outputs (regenerable; the .json decks are kept)
+CudaMONSEL/CudaMONSEL/traj_*.csv
+CudaMONSEL/CudaMONSEL/traj_*.png
+
+# Study outputs (regenerable; the .json decks under studies/ are kept)
+CudaMONSEL/CudaMONSEL/studies/**/*.csv
+CudaMONSEL/CudaMONSEL/studies/**/*.pgm
+CudaMONSEL/CudaMONSEL/studies/**/*.png
+CudaMONSEL/CudaMONSEL/studies/**/*.bin
