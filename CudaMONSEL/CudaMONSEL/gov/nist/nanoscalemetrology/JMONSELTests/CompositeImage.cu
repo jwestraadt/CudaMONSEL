@@ -1133,9 +1133,12 @@ namespace CompositeImage
          // bulkRegion becomes a child of the surface layer rather than of chamber.
          double                 slSurfPos[] = { 0.0, 0.0, -slThicknessM };
          NormalMultiPlaneShapeT slSurface_t;
+         // slPl_t must outlive slSurface_t: NormalMultiPlaneShape::contains(pos)
+         // dereferences the stored plane pointer, so a plane scoped to the if-block
+         // would dangle once the surface layer is actually used during tracing.
+         PlaneT                 slPl_t(normalvec, 3, slSurfPos, 3);
          std::unique_ptr<RegionT> slRegion_up;
          if (hasSL) {
-            PlaneT slPl_t(normalvec, 3, slSurfPos, 3);
             slSurface_t.addPlane(slPl_t);
             slRegion_up = std::make_unique<RegionT>(&chamber_t, slMSM_up.get(), (NormalShapeT*)&slSurface_t);
          }
