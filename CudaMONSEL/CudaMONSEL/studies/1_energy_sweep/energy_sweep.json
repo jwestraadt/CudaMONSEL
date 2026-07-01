@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "run_tests": false,
+  "simulations": [
+    {
+      "type": "bulk_yield",
+      "name": "Rene65 gamma vs gamma-prime BSE/SE yield vs energy",
+      "enabled": true,
+      "output_csv": "studies/1_energy_sweep/energy_sweep.csv",
+      "trajectories": 25000,
+      "beam_size_nm": 0.5,
+      "secondary_electron_threshold_ev": 50.0,
+      "histogram_bin_size_ev": 10.0,
+      "scattering": { "elastic": "nist_mott", "inelastic": "fitted", "csd": "joy_luo_nieminen", "barrier": "exp_qm" },
+      "beam_energies_ev": [200.0, 500.0, 1000.0, 2000.0, 3000.0, 5000.0, 10000.0, 20000.0],
+      "phases": [
+        {
+          "name": "gamma_R65",
+          "density_kg_m3": 8300.0, "work_function_ev": 5.0, "fermi_energy_ev": 8.8, "bandgap_ev": 0.0,
+          "secondary_generation_energy_ev": 30.0, "break_energy_ev": 45.0,
+          "composition": { "Ni": 42.5, "Cr": 29.2, "Co": 20.9, "Mo": 4.1, "W": 2.2, "Ti": 1.0, "Al": 0.1, "Nb": 0.1 }
+        },
+        {
+          "name": "gammaP_R65",
+          "density_kg_m3": 7950.0, "work_function_ev": 4.8, "fermi_energy_ev": 7.5, "bandgap_ev": 0.0,
+          "secondary_generation_energy_ev": 28.0, "break_energy_ev": 45.0,
+          "composition": { "Ni": 72.5, "Al": 10.3, "Ti": 10.4, "Cr": 3.1, "Co": 2.3, "Nb": 1.0, "Mo": 0.2, "W": 0.2 }
+        }
+      ]
+    }
+  ]
+}
