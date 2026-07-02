@@ -64,10 +64,13 @@ Rules:
   but reaching below it, `depth > -radius`): the polished cut-particle.
 - **Sphere surfaces must not intersect** — asserted at parse time (r65gen
   decks guarantee ≥ 1 nm gaps by RSA construction).
-- Backend: multi-sphere decks currently run on the **CPU region graph**
-  (`backend: "cpu"` or `auto`; O(N spheres) per step — suited to small scan
-  windows). `backend: "gpu"` on a multi-sphere deck is an error until the
-  GPU geometry gains a sphere array + spatial grid.
+- Backend: multi-sphere decks run on **both backends**. The GPU carries the
+  sphere array in a uniform grid (CSR cell lists; 3D-DDA boundary walk) and
+  is the production path for thousands of spheres; the CPU region graph
+  (O(N spheres) per step) is the small-window validation path. One
+  restriction: a deck mixing `void` and solid spheres is CPU-only (the GPU
+  has a single precipitate material slot); `backend: "gpu"` on such a deck
+  is an error.
 
 ### Optional blocks
 - **`surface_layer`** — a thin conformal overlayer (used for carbon

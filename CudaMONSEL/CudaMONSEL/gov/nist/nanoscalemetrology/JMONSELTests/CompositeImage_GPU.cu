@@ -161,27 +161,47 @@ namespace CompositeImageGPU
          }
       };
 
-      __device__ int regionAt(Vec3 p, const GeomGPU& geom)
+      // Which precipitate sphere (if any) contains p? Uniform-grid lookup:
+      // spheres are registered in every cell their AABB overlaps, so testing
+      // the containing cell's list is exhaustive. Returns -1 for none.
+      __device__ int sphereIndexAt(Vec3 p, const GeomGPU& geom)
       {
+         if (geom.nSpheres == 0)
+            return -1;
+         int cx = (int)floor((p.x - geom.gridOx) * geom.cellInv);
+         int cy = (int)floor((p.y - geom.gridOy) * geom.cellInv);
+         int cz = (int)floor((p.z - geom.gridOz) * geom.cellInv);
+         if (cx < 0 || cy < 0 || cz < 0 || cx >= geom.ncx || cy >= geom.ncy || cz >= geom.ncz)
+            return -1;
+         int cell = (cz * geom.ncy + cy) * geom.ncx + cx;
+         for (int k = geom.cellStart[cell]; k < geom.cellStart[cell + 1]; ++k) {
+            int s = geom.cellItems[k];
+            const SphereGPU& sp = geom.spheres[s];
+            double dx = p.x - sp.x;
+            double dy = p.y - sp.y;
+            double dz = p.z - sp.z;
+            if (dx * dx + dy * dy + dz * dz <= sp.r * sp.r)
+               return s;
+         }
+         return -1;
+      }
+
+      __device__ int regionAt(Vec3 p, const GeomGPU& geom, int* sphereIdxOut = nullptr)
+      {
+         if (sphereIdxOut) *sphereIdxOut = -1;
          if (norm2(p) > CM_GPU_CHAMBER_RADIUS * CM_GPU_CHAMBER_RADIUS)
             return REGION_NONE;
 
-         if (geom.hasSL) {
-            if (p.z >= 0.0) {
-               double dx = p.x - geom.precipCx;
-               double dy = p.y - geom.precipCy;
-               double dz = p.z - geom.precipCz;
-               return (dx * dx + dy * dy + dz * dz <= geom.precipR2) ? REGION_PRECIP : REGION_BULK;
-            }
-            return (p.z >= -geom.slThick) ? REGION_SL : REGION_VAC;
-         }
-
          if (p.z >= 0.0) {
-            double dx = p.x - geom.precipCx;
-            double dy = p.y - geom.precipCy;
-            double dz = p.z - geom.precipCz;
-            return (dx * dx + dy * dy + dz * dz <= geom.precipR2) ? REGION_PRECIP : REGION_BULK;
+            int s = sphereIndexAt(p, geom);
+            if (s >= 0) {
+               if (sphereIdxOut) *sphereIdxOut = s;
+               return REGION_PRECIP;
+            }
+            return REGION_BULK;
          }
+         if (geom.hasSL)
+            return (p.z >= -geom.slThick) ? REGION_SL : REGION_VAC;
          return REGION_VAC;
       }
 
@@ -193,15 +213,15 @@ namespace CompositeImageGPU
          return (t > 0.0 && t <= 1.0) ? t : INFINITY;
       }
 
-      __device__ double sphereT(Vec3 p0, Vec3 p1, const GeomGPU& geom)
+      __device__ double sphereT(Vec3 p0, Vec3 p1, const SphereGPU& sp)
       {
-         Vec3 c = { geom.precipCx, geom.precipCy, geom.precipCz };
+         Vec3 c = { sp.x, sp.y, sp.z };
          Vec3 d = sub(p1, p0);
          Vec3 m = sub(p0, c);
          double a = dot(d, d);
          if (a == 0.0) return INFINITY;
          double b = 2.0 * dot(m, d);
-         double cc = dot(m, m) - geom.precipR2;
+         double cc = dot(m, m) - sp.r * sp.r;
          double disc = b * b - 4.0 * a * cc;
          if (disc < 0.0) return INFINITY;
          double root = sqrt(disc);
@@ -211,6 +231,101 @@ namespace CompositeImageGPU
          if (t0 > 0.0 && t0 <= 1.0) res = t0;
          if (t1 > 0.0 && t1 <= 1.0 && t1 < res) res = t1;
          return res;
+      }
+
+      // Earliest entry into any precipitate sphere along p0->p1, via a 3D-DDA
+      // walk of the uniform grid: the segment is clipped to the grid AABB,
+      // cells are visited in t-order, and each cell's registered spheres are
+      // tested. A hit is accepted once it lies at or before the exit of the
+      // current cell (spheres are registered in every overlapped cell, so the
+      // earliest hit is found in the first cell whose slab contains it).
+      __device__ double sphereEntryT(Vec3 p0, Vec3 p1, const GeomGPU& geom)
+      {
+         if (geom.nSpheres == 0)
+            return INFINITY;
+
+         Vec3 d = sub(p1, p0);
+         // Clip [0,1] to the grid AABB (slab method).
+         double gx1 = geom.gridOx + geom.ncx / geom.cellInv;
+         double gy1 = geom.gridOy + geom.ncy / geom.cellInv;
+         double gz1 = geom.gridOz + geom.ncz / geom.cellInv;
+         double tMin = 0.0, tMax = 1.0;
+         double lo[3] = { geom.gridOx, geom.gridOy, geom.gridOz };
+         double hi[3] = { gx1, gy1, gz1 };
+         double o[3] = { p0.x, p0.y, p0.z };
+         double dd[3] = { d.x, d.y, d.z };
+         for (int ax = 0; ax < 3; ++ax) {
+            if (dd[ax] == 0.0) {
+               if (o[ax] < lo[ax] || o[ax] > hi[ax]) return INFINITY;
+            }
+            else {
+               double inv = 1.0 / dd[ax];
+               double ta = (lo[ax] - o[ax]) * inv;
+               double tb = (hi[ax] - o[ax]) * inv;
+               if (ta > tb) { double tmp = ta; ta = tb; tb = tmp; }
+               if (ta > tMin) tMin = ta;
+               if (tb < tMax) tMax = tb;
+               if (tMin > tMax) return INFINITY;
+            }
+         }
+
+         // Start cell (nudged inside), per-axis step and crossing t values.
+         const double eps = 1.0e-12;
+         Vec3 pStart = add(p0, mul(tMin + eps, d));
+         int ix = (int)floor((pStart.x - geom.gridOx) * geom.cellInv);
+         int iy = (int)floor((pStart.y - geom.gridOy) * geom.cellInv);
+         int iz = (int)floor((pStart.z - geom.gridOz) * geom.cellInv);
+         if (ix < 0) ix = 0; if (ix >= geom.ncx) ix = geom.ncx - 1;
+         if (iy < 0) iy = 0; if (iy >= geom.ncy) iy = geom.ncy - 1;
+         if (iz < 0) iz = 0; if (iz >= geom.ncz) iz = geom.ncz - 1;
+
+         double cell = 1.0 / geom.cellInv;
+         int    stepI[3], idx[3] = { ix, iy, iz };
+         int    nCells[3] = { geom.ncx, geom.ncy, geom.ncz };
+         double tNext[3], tDelta[3];
+         double org[3] = { geom.gridOx, geom.gridOy, geom.gridOz };
+         for (int ax = 0; ax < 3; ++ax) {
+            if (dd[ax] > 0.0) {
+               stepI[ax] = 1;
+               tNext[ax] = ((org[ax] + (idx[ax] + 1) * cell) - o[ax]) / dd[ax];
+               tDelta[ax] = cell / dd[ax];
+            }
+            else if (dd[ax] < 0.0) {
+               stepI[ax] = -1;
+               tNext[ax] = ((org[ax] + idx[ax] * cell) - o[ax]) / dd[ax];
+               tDelta[ax] = -cell / dd[ax];
+            }
+            else {
+               stepI[ax] = 0;
+               tNext[ax] = INFINITY;
+               tDelta[ax] = INFINITY;
+            }
+         }
+
+         double best = INFINITY;
+         while (true) {
+            // exit t of the current cell
+            double tExit = tNext[0];
+            int    axMin = 0;
+            if (tNext[1] < tExit) { tExit = tNext[1]; axMin = 1; }
+            if (tNext[2] < tExit) { tExit = tNext[2]; axMin = 2; }
+
+            int c = (idx[2] * geom.ncy + idx[1]) * geom.ncx + idx[0];
+            for (int k = geom.cellStart[c]; k < geom.cellStart[c + 1]; ++k) {
+               double t = sphereT(p0, p1, geom.spheres[geom.cellItems[k]]);
+               if (t < best) best = t;
+            }
+            // accept once the earliest hit cannot be beaten by later cells
+            if (best <= tExit + eps)
+               return best;
+            if (tExit > tMax || tExit > 1.0)
+               return best;   // walked past the segment / grid: INF or a late hit
+
+            idx[axMin] += stepI[axMin];
+            if (idx[axMin] < 0 || idx[axMin] >= nCells[axMin])
+               return best;
+            tNext[axMin] += tDelta[axMin];
+         }
       }
 
       __device__ double chamberT(Vec3 p0, Vec3 p1)
@@ -248,7 +363,8 @@ namespace CompositeImageGPU
          return regionAt(add(hit, mul(CM_GPU_SMALL_DISP, dir)), geom);
       }
 
-      __device__ BoundaryHit findBoundary(int region, Vec3 p0, Vec3 p1, const GeomGPU& geom, Vec3 dir)
+      __device__ BoundaryHit findBoundary(int region, Vec3 p0, Vec3 p1, const GeomGPU& geom,
+                                          Vec3 dir, int sphereIdx)
       {
          BoundaryHit best;
          best.t = INFINITY;
@@ -274,13 +390,17 @@ namespace CompositeImageGPU
          }
          else if (region == REGION_BULK) {
             considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
-            double ts = sphereT(p0, p1, geom);
+            double ts = sphereEntryT(p0, p1, geom);
             if (ts < INFINITY)
                considerHit(best, ts, REGION_PRECIP, dir);
             considerHit(best, chamberT(p0, p1), REGION_NONE, dir);
          }
          else if (region == REGION_PRECIP) {
-            considerHit(best, sphereT(p0, p1, geom), REGION_BULK, dir);
+            // Spheres never intersect (parse-time assert), so a precipitate is
+            // exited only through its OWN sphere surface; the >= 1 nm RSA gaps
+            // dwarf CM_GPU_SMALL_DISP, so the post-exit point is always bulk.
+            if (sphereIdx >= 0 && sphereIdx < geom.nSpheres)
+               considerHit(best, sphereT(p0, p1, geom.spheres[sphereIdx]), REGION_BULK, dir);
             // The precipitate's flat face lies in the z=0 free surface, so its outward
             // normal is {0,0,-1} (toward vacuum), identical to the matrix free surface.
             // Using the physical normal gates SE escape on the perpendicular energy
@@ -674,7 +794,8 @@ namespace CompositeImageGPU
 
          while (true) {
             while (!e.complete) {
-               e.region = regionAt(e.pos, cfg.geom);
+               int sphereIdx = -1;
+               e.region = regionAt(e.pos, cfg.geom, &sphereIdx);
                if (e.region == REGION_NONE) {
                   e.complete = true;
                   break;
@@ -695,7 +816,7 @@ namespace CompositeImageGPU
 
                Vec3 dir = directionFromAngles(e.theta, e.phi);
                Vec3 candidate = add(e.pos, mul(freePath, dir));
-               BoundaryHit hit = findBoundary(e.region, e.pos, candidate, cfg.geom, dir);
+               BoundaryHit hit = findBoundary(e.region, e.pos, candidate, cfg.geom, dir, sphereIdx);
                double stepLen = freePath;
                if (hit.hit) {
                   stepLen *= hit.t;
@@ -810,10 +931,19 @@ namespace CompositeImageGPU
       DetectorSpec* dDet = nullptr;
       int* dDetCounts = nullptr;
       int* dRadial = nullptr;
+      SphereGPU* dSpheres = nullptr;
+      int* dCellStart = nullptr;
+      int* dCellItems = nullptr;
 
+      const size_t nSpheres = cfg.spheres.size();
       bool ok = true;
       ok = ok && checkCuda(cudaMalloc((void**)&dMats, sizeof(MatGPU) * 4), "cudaMalloc mats");
       ok = ok && checkCuda(cudaMalloc((void**)&dElems, sizeof(ElemTableGPU) * cfg.elems.size()), "cudaMalloc elems");
+      if (ok && nSpheres > 0) {
+         ok = ok && checkCuda(cudaMalloc((void**)&dSpheres, sizeof(SphereGPU) * nSpheres), "cudaMalloc spheres");
+         ok = ok && checkCuda(cudaMalloc((void**)&dCellStart, sizeof(int) * cfg.cellStart.size()), "cudaMalloc cellStart");
+         ok = ok && checkCuda(cudaMalloc((void**)&dCellItems, sizeof(int) * std::max<size_t>(cfg.cellItems.size(), 1)), "cudaMalloc cellItems");
+      }
       ok = ok && checkCuda(cudaMalloc((void**)&dPixelX, sizeof(double) * pixelCount), "cudaMalloc pixelX");
       ok = ok && checkCuda(cudaMalloc((void**)&dPixelY, sizeof(double) * pixelCount), "cudaMalloc pixelY");
       ok = ok && checkCuda(cudaMalloc((void**)&dSE, sizeof(int) * pixelCount), "cudaMalloc seCounts");
@@ -833,6 +963,12 @@ namespace CompositeImageGPU
       if (ok) {
          ok = ok && checkCuda(cudaMemcpy(dMats, cfg.mats, sizeof(MatGPU) * 4, cudaMemcpyHostToDevice), "copy mats");
          ok = ok && checkCuda(cudaMemcpy(dElems, cfg.elems.data(), sizeof(ElemTableGPU) * cfg.elems.size(), cudaMemcpyHostToDevice), "copy elems");
+         if (nSpheres > 0) {
+            ok = ok && checkCuda(cudaMemcpy(dSpheres, cfg.spheres.data(), sizeof(SphereGPU) * nSpheres, cudaMemcpyHostToDevice), "copy spheres");
+            ok = ok && checkCuda(cudaMemcpy(dCellStart, cfg.cellStart.data(), sizeof(int) * cfg.cellStart.size(), cudaMemcpyHostToDevice), "copy cellStart");
+            if (!cfg.cellItems.empty())
+               ok = ok && checkCuda(cudaMemcpy(dCellItems, cfg.cellItems.data(), sizeof(int) * cfg.cellItems.size(), cudaMemcpyHostToDevice), "copy cellItems");
+         }
          ok = ok && checkCuda(cudaMemcpy(dPixelX, cfg.pixelX.data(), sizeof(double) * pixelCount, cudaMemcpyHostToDevice), "copy pixelX");
          ok = ok && checkCuda(cudaMemcpy(dPixelY, cfg.pixelY.data(), sizeof(double) * pixelCount, cudaMemcpyHostToDevice), "copy pixelY");
          ok = ok && checkCuda(cudaMemset(dSE, 0, sizeof(int) * pixelCount), "clear seCounts");
@@ -864,6 +1000,10 @@ namespace CompositeImageGPU
          kcfg.pixelCount = pixelCount;
          kcfg.trajPerPixel = cfg.trajPerPixel;
          kcfg.geom = cfg.geom;
+         kcfg.geom.spheres = dSpheres;      // patch host geometry with device pointers
+         kcfg.geom.nSpheres = (int)nSpheres;
+         kcfg.geom.cellStart = dCellStart;
+         kcfg.geom.cellItems = dCellItems;
          kcfg.beamE = cfg.beamE;
          kcfg.beamSizeM = cfg.beamSizeM;
          kcfg.beamStartZ = cfg.beamStartZ;
@@ -929,6 +1069,9 @@ namespace CompositeImageGPU
       cudaFree(dDet);
       cudaFree(dDetCounts);
       cudaFree(dRadial);
+      cudaFree(dSpheres);
+      cudaFree(dCellStart);
+      cudaFree(dCellItems);
 
       if (!ok)
          return false;

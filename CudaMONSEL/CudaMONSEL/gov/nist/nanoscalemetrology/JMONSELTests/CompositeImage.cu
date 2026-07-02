@@ -1057,14 +1057,99 @@ namespace CompositeImage
       return mat;
    }
 
+   // Build the uniform grid over the sphere-populated AABB (CSR cell lists).
+   // Cell size follows the median radius (registration in every overlapped
+   // cell keeps this correct even when radii span decades); total cell count
+   // is capped so degenerate inputs cannot exhaust memory.
+   static void buildSphereGrid(CompositeImageGPU::GPURunConfig& gpu)
+   {
+      auto& g = gpu.geom;
+      const size_t n = gpu.spheres.size();
+      g.nSpheres = (int)n;
+      g.spheres = nullptr;   // device pointers patched inside CompositeImageGPU::run
+      g.cellStart = nullptr;
+      g.cellItems = nullptr;
+      if (n == 0) {
+         g.gridOx = g.gridOy = g.gridOz = 0.0;
+         g.cellInv = 1.0;
+         g.ncx = g.ncy = g.ncz = 0;
+         gpu.cellStart.assign(1, 0);
+         gpu.cellItems.clear();
+         return;
+      }
+
+      double lo[3] = { 1.0e300, 1.0e300, 1.0e300 };
+      double hi[3] = { -1.0e300, -1.0e300, -1.0e300 };
+      std::vector<double> radii(n);
+      for (size_t i = 0; i < n; ++i) {
+         const CompositeImageGPU::SphereGPU& s = gpu.spheres[i];
+         const double c[3] = { s.x, s.y, s.z };
+         for (int ax = 0; ax < 3; ++ax) {
+            lo[ax] = std::min(lo[ax], c[ax] - s.r);
+            hi[ax] = std::max(hi[ax], c[ax] + s.r);
+         }
+         radii[i] = s.r;
+      }
+      const double pad = 1.0e-9;
+      for (int ax = 0; ax < 3; ++ax) { lo[ax] -= pad; hi[ax] += pad; }
+
+      std::nth_element(radii.begin(), radii.begin() + n / 2, radii.end());
+      double cell = std::max(4.0 * radii[n / 2], 1.0e-9);
+      long long ncx, ncy, ncz;
+      for (;;) {
+         ncx = std::max(1LL, (long long)std::ceil((hi[0] - lo[0]) / cell));
+         ncy = std::max(1LL, (long long)std::ceil((hi[1] - lo[1]) / cell));
+         ncz = std::max(1LL, (long long)std::ceil((hi[2] - lo[2]) / cell));
+         if (ncx * ncy * ncz <= 2000000LL) break;
+         cell *= 1.26;   // ~2x cell volume per iteration
+      }
+      g.gridOx = lo[0]; g.gridOy = lo[1]; g.gridOz = lo[2];
+      g.cellInv = 1.0 / cell;
+      g.ncx = (int)ncx; g.ncy = (int)ncy; g.ncz = (int)ncz;
+
+      // CSR: count per cell, prefix-sum, fill.
+      const size_t nCells = (size_t)(ncx * ncy * ncz);
+      std::vector<int> counts(nCells, 0);
+      auto cellRange = [&](const CompositeImageGPU::SphereGPU& s, int r0[3], int r1[3]) {
+         const double c[3] = { s.x, s.y, s.z };
+         const double o[3] = { g.gridOx, g.gridOy, g.gridOz };
+         const int    nc[3] = { g.ncx, g.ncy, g.ncz };
+         for (int ax = 0; ax < 3; ++ax) {
+            r0[ax] = std::max(0, (int)std::floor((c[ax] - s.r - o[ax]) * g.cellInv));
+            r1[ax] = std::min(nc[ax] - 1, (int)std::floor((c[ax] + s.r - o[ax]) * g.cellInv));
+         }
+      };
+      for (size_t i = 0; i < n; ++i) {
+         int r0[3], r1[3];
+         cellRange(gpu.spheres[i], r0, r1);
+         for (int iz = r0[2]; iz <= r1[2]; ++iz)
+            for (int iy = r0[1]; iy <= r1[1]; ++iy)
+               for (int ix = r0[0]; ix <= r1[0]; ++ix)
+                  ++counts[((size_t)iz * g.ncy + iy) * g.ncx + ix];
+      }
+      gpu.cellStart.assign(nCells + 1, 0);
+      for (size_t c = 0; c < nCells; ++c)
+         gpu.cellStart[c + 1] = gpu.cellStart[c] + counts[c];
+      gpu.cellItems.assign(gpu.cellStart[nCells], 0);
+      std::vector<int> cursor(gpu.cellStart.begin(), gpu.cellStart.end() - 1);
+      for (size_t i = 0; i < n; ++i) {
+         int r0[3], r1[3];
+         cellRange(gpu.spheres[i], r0, r1);
+         for (int iz = r0[2]; iz <= r1[2]; ++iz)
+            for (int iy = r0[1]; iy <= r1[1]; ++iy)
+               for (int ix = r0[0]; ix <= r1[0]; ++ix)
+                  gpu.cellItems[cursor[((size_t)iz * g.ncy + iy) * g.ncx + ix]++] = (int)i;
+      }
+   }
+
    static CompositeImageGPU::GPURunConfig makeGpuRunConfig(
       const CompositeImageConfig& config,
       const PhaseConfig& matrix,
       const PhaseConfig& precip,
       bool hasSL,
       double slThicknessM,
-      const double precipCenter[],
-      double precipRadius,
+      const std::vector<std::array<double, 3>>& sphereCenters,
+      const std::vector<double>& sphereRadii,
       double beamE,
       double beamsize,
       double beamStartZ,
@@ -1079,21 +1164,35 @@ namespace CompositeImage
       CompositeImageGPU::GPURunConfig gpu;
       std::map<int, int> elementIndex;
 
+      // All spheres share one material slot; mixed void/solid decks are routed
+      // to the CPU backend by the caller (runImage dispatch).
+      bool allVoid = !config.precipitates.empty();
+      for (size_t i = 0; i < config.precipitates.size(); ++i)
+         allVoid = allVoid && config.precipitates[i].isVoid;
+
       gpu.elems.clear();
       gpu.mats[0] = makeVacuumGpuMaterial();
       gpu.mats[1] = hasSL ? makeGpuMaterial(config.surfaceLayer.phase, elementIndex, gpu.elems) : makeVacuumGpuMaterial();
       gpu.mats[2] = makeGpuMaterial(matrix, elementIndex, gpu.elems);
-      gpu.mats[3] = config.precipitates[0].isVoid
-         ? makeVacuumGpuMaterial()                                  // etched-out void: no scatter inside
+      gpu.mats[3] = allVoid
+         ? makeVacuumGpuMaterial()                                  // etched-out voids: no scatter inside
          : makeGpuMaterial(precip, elementIndex, gpu.elems);
 
-      gpu.geom.precipCx = precipCenter[0];
-      gpu.geom.precipCy = precipCenter[1];
-      gpu.geom.precipCz = precipCenter[2];
-      gpu.geom.precipR = precipRadius;
-      gpu.geom.precipR2 = precipRadius * precipRadius;
+      gpu.spheres.resize(sphereCenters.size());
+      for (size_t i = 0; i < sphereCenters.size(); ++i) {
+         gpu.spheres[i].x = sphereCenters[i][0];
+         gpu.spheres[i].y = sphereCenters[i][1];
+         gpu.spheres[i].z = sphereCenters[i][2];
+         gpu.spheres[i].r = sphereRadii[i];
+      }
+      buildSphereGrid(gpu);
+      gpu.geom.spheresAreVoid = allVoid;
       gpu.geom.slThick = slThicknessM;
       gpu.geom.hasSL = hasSL;
+      if (gpu.geom.nSpheres > 1)
+         printf("  GPU sphere grid: %d spheres, %dx%dx%d cells, %zu references\n",
+                gpu.geom.nSpheres, gpu.geom.ncx, gpu.geom.ncy, gpu.geom.ncz,
+                gpu.cellItems.size());
 
       gpu.nx = nx;
       gpu.ny = ny;
@@ -1327,8 +1426,14 @@ namespace CompositeImage
                               config.precipitates[s].centerDepthNm * 1.e-9 };
          sphereRadii[s]   = config.precipitates[s].radiusNm * 1.e-9;
       }
-      const double* precipCenter = (nSpheres == 1) ? sphereCenters[0].data() : nullptr;
-      double precipRadius        = (nSpheres == 1) ? sphereRadii[0] : 0.0;
+      // The GPU material model has one precipitate slot, so a deck mixing void
+      // and solid spheres cannot run there (CPU assigns materials per sphere).
+      bool anyVoid = false, allVoid = (nSpheres > 0);
+      for (size_t s = 0; s < nSpheres; ++s) {
+         anyVoid = anyVoid || config.precipitates[s].isVoid;
+         allVoid = allVoid && config.precipitates[s].isVoid;
+      }
+      const bool mixedVoid = anyVoid && !allVoid;
 
       // === Beam parameters ===
       double beamE    = ToSI::eV(config.beamEnergyEv);
@@ -1374,24 +1479,19 @@ namespace CompositeImage
       int  pixelsDone  = 0;
       bool gpuUsed = false;
 
-      // The GPU kernel's geometry model carries a single precipitate sphere;
-      // multi-sphere decks run on the CPU region graph until the GPU gains a
-      // sphere-array + spatial-grid geometry.
-      if (nSpheres != 1 && config.backend == "gpu")
-         throw std::runtime_error("composite_image backend=gpu supports exactly one precipitate; "
-                                  "this deck has " + std::to_string(nSpheres) +
-                                  " - use backend=cpu (or auto)");
-      if (nSpheres != 1 && config.backend != "cpu") {
-         printf("  NOTE: %zu precipitate spheres -> CPU backend (GPU geometry is single-sphere)\n",
-                nSpheres); fflush(stdout);
+      if (mixedVoid && config.backend == "gpu")
+         throw std::runtime_error("composite_image backend=gpu cannot mix void and solid "
+                                  "precipitates (one GPU material slot) - use backend=cpu");
+      if (mixedVoid && config.backend != "cpu") {
+         printf("  NOTE: mixed void/solid precipitates -> CPU backend\n"); fflush(stdout);
       }
 
-      if (config.backend != "cpu" && nSpheres == 1) {
+      if (config.backend != "cpu" && !mixedVoid) {
          if (CompositeImageGPU::isAvailable()) {
             printf("  Trying CUDA GPU backend\n"); fflush(stdout);
             try {
                CompositeImageGPU::GPURunConfig gpuCfg = makeGpuRunConfig(
-                  config, matrix, precip, hasSL, slThicknessM, precipCenter, precipRadius,
+                  config, matrix, precip, hasSL, slThicknessM, sphereCenters, sphereRadii,
                   beamE, beamsize, beamStartZ, nx, ny, cx, cy, hw, dxm, dym);
                CompositeImageGPU::GPUOutput gpuOut;
                if (CompositeImageGPU::run(gpuCfg, gpuOut)) {
