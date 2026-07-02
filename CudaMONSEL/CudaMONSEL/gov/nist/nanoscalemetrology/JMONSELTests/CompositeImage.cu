@@ -1,13 +1,17 @@
 // file: gov\nist\nanoscalemetrology\JMONSELTests\CompositeImage.cu
 //
-// SEM image simulation for a composite material: one matrix phase with a single
-// spherical precipitate embedded at a configurable depth.  The beam is scanned
-// over a 2D (x, y) grid; SE and BSE yields are recorded per pixel and written
-// to a CSV file and to PGM image files (one each for SE and BSE yield).
+// SEM image simulation for a composite material: one matrix phase with one or
+// more spherical precipitates embedded at configurable depths (the legacy
+// "precipitate" deck key gives one sphere; the "precipitates" array, e.g. from
+// an r65gen microstructure export, gives many — all sharing the precipitate
+// phase). The beam is scanned over a 2D (x, y) grid; SE and BSE yields are
+// recorded per pixel and written to a CSV file and to PGM image files.
 //
 // Precipitate center_depth_nm = 0 places the centroid on the surface so the
 // sphere is cut exactly in half: the upper hemisphere is in vacuum (no scatter)
-// and the lower hemisphere is the precipitate phase.
+// and the lower hemisphere is the precipitate phase. Sphere surfaces must not
+// intersect (asserted at parse time). Multi-sphere decks run on the CPU region
+// graph; the GPU kernel's geometry is single-sphere in this revision.
 //
 // Scatter stack: SelectableElasticSM (NISTMott) + FittedInelSM + JoyLuoNieminenCSD
 // (same as bulk_yield — no JMONSEL tables required).
@@ -41,6 +45,7 @@
 #include "gov\nist\microanalysis\EPQLibrary\NISTMottScatteringAngle.cuh"
 #include "gov\nist\microanalysis\EPQLibrary\PhysicalConstants.cuh"
 
+#include <array>
 #include <fstream>
 #include <chrono>
 #include <cmath>
@@ -49,6 +54,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 #include <algorithm>
 #include <omp.h>
@@ -133,7 +139,10 @@ namespace CompositeImage
       ScatteringConfig   scattering;
       PhaseConfig        matrixPhase;
       PhaseConfig        precipitatePhase;
-      PrecipitateConfig  precipitate;
+      // One or more precipitate spheres, all sharing precipitatePhase. The
+      // legacy single "precipitate" deck key edits element 0; the
+      // "precipitates" array replaces the whole list (may be empty).
+      std::vector<PrecipitateConfig> precipitates;
       ScanConfig         scan;
       SurfaceLayerConfig surfaceLayer;
 
@@ -466,11 +475,13 @@ namespace CompositeImage
       addElement(precip, &Element::Ta, 5.);
       addElement(precip, &Element::Cr, 3.);
 
-      config.precipitate.radiusNm      = 30.0;
-      config.precipitate.centerXNm     = 0.0;
-      config.precipitate.centerYNm     = 0.0;
-      config.precipitate.centerDepthNm = 0.0;   // centroid on surface
-      config.precipitate.isVoid        = false;
+      PrecipitateConfig sphere;
+      sphere.radiusNm      = 30.0;
+      sphere.centerXNm     = 0.0;
+      sphere.centerYNm     = 0.0;
+      sphere.centerDepthNm = 0.0;   // centroid on surface
+      sphere.isVoid        = false;
+      config.precipitates.assign(1, sphere);
 
       config.scan.centerXNm  = 0.0;
       config.scan.centerYNm  = 0.0;
@@ -692,6 +703,57 @@ namespace CompositeImage
       return specs;
    }
 
+   static PrecipitateConfig readPrecipitateConfig(const RuntimeInput::JsonValue& json,
+                                                  const PrecipitateConfig& defaults)
+   {
+      PrecipitateConfig p = defaults;
+      p.radiusNm      = numberOr(json, p.radiusNm,      "radius_nm",       "radius");
+      p.centerXNm     = numberOr(json, p.centerXNm,     "center_x_nm",     "x_nm");
+      p.centerYNm     = numberOr(json, p.centerYNm,     "center_y_nm",     "y_nm");
+      p.centerDepthNm = numberOr(json, p.centerDepthNm, "center_depth_nm", "depth_nm");
+      p.isVoid        = json.boolOr("void", p.isVoid);
+      return p;
+   }
+
+   // Sphere surfaces must never intersect: the GPU transport exits a precipitate
+   // through the root of its own sphere only, so overlapping spheres would
+   // corrupt region bookkeeping. r65gen decks guarantee >= 1 nm gaps by RSA
+   // construction; this uniform-grid check (O(N) expected) catches bad decks at
+   // parse time instead.
+   static void assertNoSphereOverlaps(const std::vector<PrecipitateConfig>& spheres)
+   {
+      if (spheres.size() < 2) return;
+      double rMax = 0.0;
+      for (size_t i = 0; i < spheres.size(); ++i) rMax = std::max(rMax, spheres[i].radiusNm);
+      const double cell = std::max(2.0 * rMax, 1.0);
+      std::map<std::tuple<long, long, long>, std::vector<size_t>> grid;
+      for (size_t i = 0; i < spheres.size(); ++i) {
+         const PrecipitateConfig& a = spheres[i];
+         const long ix = (long)std::floor(a.centerXNm / cell);
+         const long iy = (long)std::floor(a.centerYNm / cell);
+         const long iz = (long)std::floor(a.centerDepthNm / cell);
+         for (long dx = -1; dx <= 1; ++dx)
+            for (long dy = -1; dy <= 1; ++dy)
+               for (long dz = -1; dz <= 1; ++dz) {
+                  auto it = grid.find(std::make_tuple(ix + dx, iy + dy, iz + dz));
+                  if (it == grid.end()) continue;
+                  for (size_t k = 0; k < it->second.size(); ++k) {
+                     const PrecipitateConfig& b = spheres[it->second[k]];
+                     const double ddx = a.centerXNm - b.centerXNm;
+                     const double ddy = a.centerYNm - b.centerYNm;
+                     const double ddz = a.centerDepthNm - b.centerDepthNm;
+                     const double rsum = a.radiusNm + b.radiusNm;
+                     if (ddx * ddx + ddy * ddy + ddz * ddz < rsum * rsum)
+                        throw std::runtime_error(
+                           "composite_image precipitates overlap (entries " +
+                           std::to_string(it->second[k]) + " and " + std::to_string(i) +
+                           "): sphere surfaces must not intersect");
+                  }
+               }
+         grid[std::make_tuple(ix, iy, iz)].push_back(i);
+      }
+   }
+
    static CompositeImageConfig readConfig(const RuntimeInput::JsonValue& json)
    {
       if (!json.isObject()) throw std::runtime_error("composite_image config must be a JSON object");
@@ -735,12 +797,26 @@ namespace CompositeImage
       if (precipPhaseJson) config.precipitatePhase = readPhaseConfig(*precipPhaseJson, "precipitate_phase");
 
       const RuntimeInput::JsonValue* precipJson = findAny(src, "precipitate", "sphere");
-      if (precipJson && precipJson->isObject()) {
-         config.precipitate.radiusNm      = numberOr(*precipJson, config.precipitate.radiusNm,      "radius_nm",       "radius");
-         config.precipitate.centerXNm     = numberOr(*precipJson, config.precipitate.centerXNm,     "center_x_nm",     "x_nm");
-         config.precipitate.centerYNm     = numberOr(*precipJson, config.precipitate.centerYNm,     "center_y_nm",     "y_nm");
-         config.precipitate.centerDepthNm = numberOr(*precipJson, config.precipitate.centerDepthNm, "center_depth_nm", "depth_nm");
-         config.precipitate.isVoid        = precipJson->boolOr("void", config.precipitate.isVoid);
+      if (precipJson && precipJson->isObject())
+         config.precipitates.assign(1, readPrecipitateConfig(*precipJson, config.precipitates[0]));
+
+      // Multi-sphere form (schema v1, r65gen export): replaces the whole list.
+      const RuntimeInput::JsonValue* precipsJson = src.find("precipitates");
+      if (precipsJson) {
+         if (!precipsJson->isArray())
+            throw std::runtime_error("composite_image precipitates must be an array");
+         PrecipitateConfig defaults;
+         defaults.radiusNm = 0.0;   // every entry must carry its own radius
+         defaults.centerXNm = defaults.centerYNm = defaults.centerDepthNm = 0.0;
+         defaults.isVoid = false;
+         config.precipitates.clear();
+         for (size_t i = 0; i < precipsJson->arrayValue.size(); ++i) {
+            const RuntimeInput::JsonValue& entry = precipsJson->arrayValue[i];
+            if (!entry.isObject())
+               throw std::runtime_error("composite_image precipitates[" + std::to_string(i) +
+                                        "] must be an object");
+            config.precipitates.push_back(readPrecipitateConfig(entry, defaults));
+         }
       }
 
       const RuntimeInput::JsonValue* scanJson = src.find("scan");
@@ -787,9 +863,17 @@ namespace CompositeImage
          throw std::runtime_error("composite_image scan nx_pixels and ny_pixels must be positive");
       if (!config.scan.radial && config.scan.halfWidthNm <= 0.0)
          throw std::runtime_error("composite_image scan half_width_nm must be positive");
-      if (config.precipitate.radiusNm <= 0.0) throw std::runtime_error("composite_image precipitate radius_nm must be positive");
-      if (config.precipitate.centerDepthNm <= -config.precipitate.radiusNm)
-         throw std::runtime_error("composite_image precipitate center_depth_nm must be > -radius_nm (sphere is entirely above the surface)");
+      for (size_t i = 0; i < config.precipitates.size(); ++i) {
+         const PrecipitateConfig& p = config.precipitates[i];
+         if (p.radiusNm <= 0.0)
+            throw std::runtime_error("composite_image precipitates[" + std::to_string(i) +
+                                     "] radius_nm must be positive");
+         if (p.centerDepthNm <= -p.radiusNm)
+            throw std::runtime_error("composite_image precipitates[" + std::to_string(i) +
+                                     "] center_depth_nm must be > -radius_nm "
+                                     "(sphere is entirely above the surface)");
+      }
+      assertNoSphereOverlaps(config.precipitates);
       if (config.surfaceLayer.enabled && config.surfaceLayer.thicknessNm <= 0.0)
          throw std::runtime_error("composite_image surface_layer thickness_nm must be positive");
       if (config.backend != "auto" && config.backend != "cpu" && config.backend != "gpu")
@@ -999,7 +1083,7 @@ namespace CompositeImage
       gpu.mats[0] = makeVacuumGpuMaterial();
       gpu.mats[1] = hasSL ? makeGpuMaterial(config.surfaceLayer.phase, elementIndex, gpu.elems) : makeVacuumGpuMaterial();
       gpu.mats[2] = makeGpuMaterial(matrix, elementIndex, gpu.elems);
-      gpu.mats[3] = config.precipitate.isVoid
+      gpu.mats[3] = config.precipitates[0].isVoid
          ? makeVacuumGpuMaterial()                                  // etched-out void: no scatter inside
          : makeGpuMaterial(precip, elementIndex, gpu.elems);
 
@@ -1162,9 +1246,22 @@ namespace CompositeImage
 
       printf("\nCompositeImage: %s\n", config.name.c_str()); fflush(stdout);
       printf("  Matrix: %s  /  Precipitate: %s\n", matrix.name.c_str(), precip.name.c_str()); fflush(stdout);
-      printf("  Precipitate: sphere r=%.1f nm, center depth=%.1f nm (x=%.1f, y=%.1f nm)\n",
-             config.precipitate.radiusNm, config.precipitate.centerDepthNm,
-             config.precipitate.centerXNm, config.precipitate.centerYNm); fflush(stdout);
+      if (config.precipitates.size() == 1) {
+         printf("  Precipitate: sphere r=%.1f nm, center depth=%.1f nm (x=%.1f, y=%.1f nm)\n",
+                config.precipitates[0].radiusNm, config.precipitates[0].centerDepthNm,
+                config.precipitates[0].centerXNm, config.precipitates[0].centerYNm);
+      }
+      else {
+         double rMin = 1.0e300, rMax = 0.0, dMin = 1.0e300, dMax = -1.0e300;
+         for (size_t i = 0; i < config.precipitates.size(); ++i) {
+            const PrecipitateConfig& p = config.precipitates[i];
+            rMin = std::min(rMin, p.radiusNm);  rMax = std::max(rMax, p.radiusNm);
+            dMin = std::min(dMin, p.centerDepthNm);  dMax = std::max(dMax, p.centerDepthNm);
+         }
+         printf("  Precipitates: %zu spheres, r=%.1f..%.1f nm, center depth=%.1f..%.1f nm\n",
+                config.precipitates.size(), rMin, rMax, dMin, dMax);
+      }
+      fflush(stdout);
       printf("  Scan: %dx%d pixels, ±%.1f nm FOV, %.0f eV beam, %d traj/pixel\n",
              config.scan.nxPixels, config.scan.nyPixels, config.scan.halfWidthNm,
              config.beamEnergyEv, config.trajectoriesPerPixel); fflush(stdout);
@@ -1219,12 +1316,19 @@ namespace CompositeImage
       const double origin[]     = { 0., 0., 0. };
       const double normalvec[]  = { 0., 0., -1. };
       const double surfacePos[] = { 0., 0.,  0. };
-      const double precipCenter[] = {
-         config.precipitate.centerXNm     * 1.e-9,
-         config.precipitate.centerYNm     * 1.e-9,
-         config.precipitate.centerDepthNm * 1.e-9
-      };
-      double precipRadius = config.precipitate.radiusNm * 1.e-9;
+      // Sphere list in SI (meters); nSpheres == 1 is the legacy single-sphere
+      // path (GPU-capable in this revision), > 1 runs on the CPU region graph.
+      const size_t nSpheres = config.precipitates.size();
+      std::vector<std::array<double, 3>> sphereCenters(nSpheres);
+      std::vector<double>                sphereRadii(nSpheres);
+      for (size_t s = 0; s < nSpheres; ++s) {
+         sphereCenters[s] = { config.precipitates[s].centerXNm     * 1.e-9,
+                              config.precipitates[s].centerYNm     * 1.e-9,
+                              config.precipitates[s].centerDepthNm * 1.e-9 };
+         sphereRadii[s]   = config.precipitates[s].radiusNm * 1.e-9;
+      }
+      const double* precipCenter = (nSpheres == 1) ? sphereCenters[0].data() : nullptr;
+      double precipRadius        = (nSpheres == 1) ? sphereRadii[0] : 0.0;
 
       // === Beam parameters ===
       double beamE    = ToSI::eV(config.beamEnergyEv);
@@ -1242,8 +1346,9 @@ namespace CompositeImage
       double dxm  = (nx > 1) ? (2.0 * hw / (nx - 1)) : 0.0;
       double dym  = (ny > 1) ? (2.0 * hw / (ny - 1)) : 0.0;
       double minBeamZ   = hasSL ? (-slThicknessM - 1.e-9) : -1.e-9;
-      double beamStartZ = (precipCenter[2] - precipRadius) - 5.e-9;
-      if (beamStartZ > minBeamZ) beamStartZ = minBeamZ;
+      double beamStartZ = minBeamZ;
+      for (size_t s = 0; s < nSpheres; ++s)
+         beamStartZ = std::min(beamStartZ, (sphereCenters[s][2] - sphereRadii[s]) - 5.e-9);
 
       // Results: row 0 = +halfWidthNm (top of image), row ny-1 = -halfWidthNm (bottom).
       std::vector<std::vector<double>> seMap  (ny, std::vector<double>(nx, 0.0));
@@ -1269,7 +1374,19 @@ namespace CompositeImage
       int  pixelsDone  = 0;
       bool gpuUsed = false;
 
-      if (config.backend != "cpu") {
+      // The GPU kernel's geometry model carries a single precipitate sphere;
+      // multi-sphere decks run on the CPU region graph until the GPU gains a
+      // sphere-array + spatial-grid geometry.
+      if (nSpheres != 1 && config.backend == "gpu")
+         throw std::runtime_error("composite_image backend=gpu supports exactly one precipitate; "
+                                  "this deck has " + std::to_string(nSpheres) +
+                                  " - use backend=cpu (or auto)");
+      if (nSpheres != 1 && config.backend != "cpu") {
+         printf("  NOTE: %zu precipitate spheres -> CPU backend (GPU geometry is single-sphere)\n",
+                nSpheres); fflush(stdout);
+      }
+
+      if (config.backend != "cpu" && nSpheres == 1) {
          if (CompositeImageGPU::isAvailable()) {
             printf("  Trying CUDA GPU backend\n"); fflush(stdout);
             try {
@@ -1436,10 +1553,21 @@ namespace CompositeImage
          RegionT*               bulkParent = hasSL ? slRegion_up.get() : &chamber_t;
          RegionT                bulkRegion_t(bulkParent, &matMSM_t, (NormalShapeT*)&surface_t);
 
-         SphereT                precipSphere_t(precipCenter, precipRadius);
-         RegionT                precipRegion_t(&bulkRegion_t,
-                                                config.precipitate.isVoid ? &vacMSM_t : &precMSM_t,
-                                                &precipSphere_t);
+         // One subregion per precipitate sphere (all share the precipitate
+         // material; void entries scatter as vacuum). The general region graph
+         // handles any count; cost is O(nSpheres) per step on this backend.
+         std::vector<std::unique_ptr<SphereT>> precipSpheres_t;
+         std::vector<std::unique_ptr<RegionT>> precipRegions_t;
+         precipSpheres_t.reserve(nSpheres);
+         precipRegions_t.reserve(nSpheres);
+         for (size_t s = 0; s < nSpheres; ++s) {
+            precipSpheres_t.push_back(
+               std::make_unique<SphereT>(sphereCenters[s].data(), sphereRadii[s]));
+            precipRegions_t.push_back(std::make_unique<RegionT>(
+               &bulkRegion_t,
+               config.precipitates[s].isVoid ? &vacMSM_t : &precMSM_t,
+               precipSpheres_t.back().get()));
+         }
 
          // Start beam above: the sphere apex, and (when a surface layer is present)
          // above the top of that layer, so the initial region lookup is always vacuum.

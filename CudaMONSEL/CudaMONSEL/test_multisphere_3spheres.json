@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "run_tests": false,
+  "simulations": [
+    {
+      "type": "composite_image",
+      "name": "multisphere sanity: surface-cut + buried + off-FOV spheres (CPU)",
+      "enabled": true,
+      "backend": "cpu",
+      "output_csv": "test_multisphere_3spheres.csv",
+      "output_pgm_se": "test_multisphere_3spheres_SE.pgm",
+      "output_pgm_bse": "test_multisphere_3spheres_BSE.pgm",
+      "beam_energy_ev": 1000.0,
+      "beam_size_nm": 0.5,
+      "trajectories_per_pixel": 200,
+      "secondary_electron_threshold_ev": 50.0,
+      "scattering": {
+        "elastic": "nist_mott",
+        "inelastic": "fitted",
+        "csd": "joy_luo_nieminen",
+        "barrier": "exp_qm"
+      },
+      "scan": {
+        "center_x_nm": 0.0,
+        "center_y_nm": 0.0,
+        "half_width_nm": 60.0,
+        "nx_pixels": 32,
+        "ny_pixels": 32
+      },
+      "matrix_phase": {
+        "name": "gamma",
+        "density_kg_m3": 8700.0,
+        "work_function_ev": 5.15,
+        "fermi_energy_ev": 8.8,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 30.0,
+        "break_energy_ev": 45.0,
+        "composition": { "Ni": 63.0, "Cr": 8.0, "Co": 10.0, "W": 6.0, "Re": 4.0, "Al": 6.0, "Ta": 3.0 }
+      },
+      "precipitate_phase": {
+        "name": "gamma_prime",
+        "density_kg_m3": 7700.0,
+        "work_function_ev": 4.6,
+        "fermi_energy_ev": 7.5,
+        "bandgap_ev": 0.0,
+        "secondary_generation_energy_ev": 25.0,
+        "break_energy_ev": 45.0,
+        "composition": { "Ni": 75.0, "Al": 12.0, "Ti": 5.0, "Ta": 5.0, "Cr": 3.0 }
+      },
+      "precipitates": [
+        { "center_x_nm": -25.0, "center_y_nm": 20.0, "center_depth_nm": -5.0, "radius_nm": 15.0 },
+        { "center_x_nm": 25.0, "center_y_nm": -15.0, "center_depth_nm": 12.0, "radius_nm": 10.0 },
+        { "center_x_nm": 75.0, "center_y_nm": 0.0, "center_depth_nm": 5.0, "radius_nm": 12.0 }
+      ]
+    }
+  ]
+}

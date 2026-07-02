@@ -41,6 +41,34 @@ surface), so it is effectively a hemisphere/partial sphere:
 - `center_depth_nm = 30` (= radius) → **buried**: sphere spans z = 0…60 nm,
   top tangent to the surface, fully sub-surface.
 
+### Multi-sphere decks (`precipitates` array, schema v1)
+
+Microstructure-export decks (e.g. from **r65gen** `r65gen-monsel`, contract
+frozen in that repo's `specs/006-monsel-export/design.md`) replace the single
+`precipitate` object with a `precipitates` **array**:
+
+```json
+"precipitates": [
+  { "center_x_nm": -701.2, "center_y_nm": 33.5, "center_depth_nm": -3.2, "radius_nm": 18.4 },
+  { "center_x_nm":  120.9, "center_y_nm": -88.1, "center_depth_nm": 141.0, "radius_nm": 62.7 }
+]
+```
+
+Rules:
+- Each entry takes the same keys as the legacy `precipitate` object
+  (`radius_nm`, `center_x_nm`, `center_y_nm`, `center_depth_nm`, optional
+  `void`); all non-void spheres share the one `precipitate_phase` material.
+- The legacy single `precipitate` key is still accepted; when both are
+  present the array wins. A one-element array ≡ the legacy form.
+- `center_depth_nm` may be **negative** (sphere centered above the surface
+  but reaching below it, `depth > -radius`): the polished cut-particle.
+- **Sphere surfaces must not intersect** — asserted at parse time (r65gen
+  decks guarantee ≥ 1 nm gaps by RSA construction).
+- Backend: multi-sphere decks currently run on the **CPU region graph**
+  (`backend: "cpu"` or `auto`; O(N spheres) per step — suited to small scan
+  windows). `backend: "gpu"` on a multi-sphere deck is an error until the
+  GPU geometry gains a sphere array + spatial grid.
+
 ### Optional blocks
 - **`surface_layer`** — a thin conformal overlayer (used for carbon
   contamination): `thickness_nm`, `composition`, plus its own
