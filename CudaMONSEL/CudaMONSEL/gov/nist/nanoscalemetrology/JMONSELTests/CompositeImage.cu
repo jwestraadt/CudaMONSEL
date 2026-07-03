@@ -96,6 +96,12 @@ namespace CompositeImage
       bool       enabled;
       double     thicknessNm;
       PhaseConfig phase;
+      // Optional per-precipitate override: over each exposed sphere's z=0
+      // footprint disc the layer uses this thickness/phase instead (GPU only).
+      bool       overrideEnabled;
+      double     overrideThicknessNm;
+      bool       overrideHasPhase;   // false => override uses the base phase
+      PhaseConfig overridePhase;
    };
 
    struct ScanConfig
@@ -493,6 +499,9 @@ namespace CompositeImage
 
       config.surfaceLayer.enabled     = false;
       config.surfaceLayer.thicknessNm = 0.0;
+      config.surfaceLayer.overrideEnabled     = false;
+      config.surfaceLayer.overrideThicknessNm = 0.0;
+      config.surfaceLayer.overrideHasPhase    = false;
 
       return config;
    }
@@ -827,6 +836,16 @@ namespace CompositeImage
          config.surfaceLayer.enabled     = true;
          config.surfaceLayer.thicknessNm = requireNumber(*slJson, "thickness_nm");
          config.surfaceLayer.phase       = readPhaseConfig(*slJson, "surface_layer");
+         const RuntimeInput::JsonValue* ovJson = findAny(*slJson, "precipitate_override", "precip_override");
+         if (ovJson && ovJson->isObject()) {
+            config.surfaceLayer.overrideEnabled = true;
+            config.surfaceLayer.overrideThicknessNm =
+               numberOr(*ovJson, config.surfaceLayer.thicknessNm, "thickness_nm");
+            if (ovJson->find("composition") || ovJson->find("elements")) {
+               config.surfaceLayer.overrideHasPhase = true;
+               config.surfaceLayer.overridePhase = readPhaseConfig(*ovJson, "surface_layer.precipitate_override");
+            }
+         }
       }
 
       const RuntimeInput::JsonValue* histJson = findAny(src, "escape_histogram", "detector_histogram");
@@ -876,6 +895,19 @@ namespace CompositeImage
       assertNoSphereOverlaps(config.precipitates);
       if (config.surfaceLayer.enabled && config.surfaceLayer.thicknessNm <= 0.0)
          throw std::runtime_error("composite_image surface_layer thickness_nm must be positive");
+      if (config.surfaceLayer.overrideEnabled) {
+         if (config.surfaceLayer.overrideThicknessNm <= 0.0)
+            throw std::runtime_error("composite_image surface_layer.precipitate_override thickness_nm must be positive");
+         if (config.backend != "gpu")
+            throw std::runtime_error("composite_image surface_layer.precipitate_override requires backend: gpu "
+                                     "(per-phase layer is not implemented on the CPU region graph)");
+         if (config.tcEnabled)
+            throw std::runtime_error("composite_image surface_layer.precipitate_override cannot be combined with "
+                                     "trajectory_capture (which forces the CPU backend)");
+         for (size_t i = 0; i < config.precipitates.size(); ++i)
+            if (config.precipitates[i].isVoid)
+               throw std::runtime_error("composite_image surface_layer.precipitate_override does not support void precipitates");
+      }
       if (config.backend != "auto" && config.backend != "cpu" && config.backend != "gpu")
          throw std::runtime_error("composite_image backend must be auto, cpu, or gpu");
       if (config.escapeHistEnabled && config.escapeHistAngleBins < 1)
@@ -1177,6 +1209,13 @@ namespace CompositeImage
       gpu.mats[3] = allVoid
          ? makeVacuumGpuMaterial()                                  // etched-out voids: no scatter inside
          : makeGpuMaterial(precip, elementIndex, gpu.elems);
+      // Slot 4: surface layer over precipitate footprints (precipitate_override).
+      bool hasSLP = hasSL && config.surfaceLayer.overrideEnabled;
+      gpu.mats[4] = hasSLP
+         ? makeGpuMaterial(config.surfaceLayer.overrideHasPhase ? config.surfaceLayer.overridePhase
+                                                                : config.surfaceLayer.phase,
+                           elementIndex, gpu.elems)
+         : makeVacuumGpuMaterial();
 
       gpu.spheres.resize(sphereCenters.size());
       for (size_t i = 0; i < sphereCenters.size(); ++i) {
@@ -1189,6 +1228,17 @@ namespace CompositeImage
       gpu.geom.spheresAreVoid = allVoid;
       gpu.geom.slThick = slThicknessM;
       gpu.geom.hasSL = hasSL;
+      gpu.geom.hasSLP = hasSLP;
+      gpu.geom.slThickP = hasSLP ? config.surfaceLayer.overrideThicknessNm * 1.e-9 : 0.0;
+      gpu.geom.anyExposedFootprint = false;
+      for (size_t i = 0; i < gpu.spheres.size(); ++i)
+         if (std::fabs(gpu.spheres[i].z) < gpu.spheres[i].r)
+            gpu.geom.anyExposedFootprint = true;
+      if (hasSLP)
+         printf("  GPU surface layer override: matrix %.2f nm / precipitate footprint %.2f nm (%s)\n",
+                slThicknessM * 1.e9, gpu.geom.slThickP * 1.e9,
+                config.surfaceLayer.overrideHasPhase ? config.surfaceLayer.overridePhase.name.c_str()
+                                                     : config.surfaceLayer.phase.name.c_str());
       if (gpu.geom.nSpheres > 1)
          printf("  GPU sphere grid: %d spheres, %dx%dx%d cells, %zu references\n",
                 gpu.geom.nSpheres, gpu.geom.ncx, gpu.geom.ncy, gpu.geom.ncz,
@@ -1450,7 +1500,10 @@ namespace CompositeImage
       double cy   = config.scan.centerYNm  * 1.e-9;
       double dxm  = (nx > 1) ? (2.0 * hw / (nx - 1)) : 0.0;
       double dym  = (ny > 1) ? (2.0 * hw / (ny - 1)) : 0.0;
-      double minBeamZ   = hasSL ? (-slThicknessM - 1.e-9) : -1.e-9;
+      double slTopM     = slThicknessM;
+      if (config.surfaceLayer.overrideEnabled)
+         slTopM = std::max(slTopM, config.surfaceLayer.overrideThicknessNm * 1.e-9);
+      double minBeamZ   = hasSL ? (-slTopM - 1.e-9) : -1.e-9;
       double beamStartZ = minBeamZ;
       for (size_t s = 0; s < nSpheres; ++s)
          beamStartZ = std::min(beamStartZ, (sphereCenters[s][2] - sphereRadii[s]) - 5.e-9);

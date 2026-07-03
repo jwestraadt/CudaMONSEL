@@ -77,6 +77,22 @@ Rules:
   contamination): `thickness_nm`, `composition`, plus its own
   `density_kg_m3`, `work_function_ev`, `fermi_energy_ev`,
   `secondary_generation_energy_ev`, `break_energy_ev`.
+  - Optional **`precipitate_override`** sub-block (GPU backend only): over each
+    exposed sphere's z=0 footprint disc the layer instead uses this
+    `thickness_nm` (default: base thickness) and/or its own full phase block
+    (present when it carries `composition`/`elements`; default: base phase).
+    Models phase-selective carbon growth (thicker or chemically different
+    carbon over γ′ than γ). When the thicknesses differ, a vertical step wall
+    stands on the footprint circle; wall crossings are ordinary material
+    barriers, with two documented simplifications: an electron transmitting
+    through the wall into vacuum is recorded as escaped immediately (no
+    re-entry), and the take-off angle β = π − θ convention assumes a
+    horizontal surface — both negligible for sub-2 nm steps. Requires
+    `backend: "gpu"` (the CPU region graph has no footprint shape); rejects
+    `trajectory_capture` and `void` spheres. An identity override (same
+    thickness + phase) reproduces the uniform layer within counting
+    statistics, but not bit-identically: wall hits truncate steps and split
+    the RNG streams (parity deck `test_slp_identity_200V.json`).
 - **`detectors`** — geometric energy/angle acceptance filters. Presets
   `inlens_se`, `annular_bse`, `etd_se`, or explicit geometry
   (`working_distance_mm`, `r_inner_mm`, `r_outer_mm` → take-off angle

@@ -31,9 +31,11 @@ namespace CompositeImageGPU
    };
 
    // -----------------------------------------------------------------------
-   // Per-material data (4 slots: 0=vacuum, 1=SL, 2=bulk, 3=precipitate)
+   // Per-material data (5 slots: 0=vacuum, 1=SL, 2=bulk, 3=precipitate,
+   // 4=SL over precipitate footprints — vacuum unless precipitate_override)
    // -----------------------------------------------------------------------
    static const int MAX_MAT_ELEM = 8;
+   static const int N_GPU_MATS   = 5;
 
    struct MatGPU
    {
@@ -91,6 +93,11 @@ namespace CompositeImageGPU
       const int* cellItems;                  // device, sphere indices
       double slThick;                        // m (0 if no SL)
       bool   hasSL;
+      // Per-precipitate surface-layer override: over each exposed sphere's
+      // z=0 footprint disc the layer spans [-slThickP, 0) with material slot 4.
+      double slThickP;                       // m (0 if no override)
+      bool   hasSLP;
+      bool   anyExposedFootprint;            // any sphere with |z_c| < r
    };
 
    // -----------------------------------------------------------------------
@@ -116,8 +123,8 @@ namespace CompositeImageGPU
    // -----------------------------------------------------------------------
    struct GPURunConfig
    {
-      // Materials (indices match region IDs: 0=vacuum,1=SL,2=bulk,3=precip)
-      MatGPU      mats[4];
+      // Materials (indices match region IDs: 0=vacuum,1=SL,2=bulk,3=precip,4=SL-over-precip)
+      MatGPU      mats[N_GPU_MATS];
       std::vector<ElemTableGPU> elems;       // all unique elements
       GeomGPU     geom;                      // device pointers patched by run()
 

@@ -24,6 +24,7 @@ namespace CompositeImageGPU
       static const int REGION_SL = 1;
       static const int REGION_BULK = 2;
       static const int REGION_PRECIP = 3;
+      static const int REGION_SLP = 4;   // surface layer over a precipitate footprint
       static const int TYPE_PRIMARY = 0;
       static const int TYPE_SE1 = 1;
       static const int TYPE_SE2 = 2;
@@ -200,8 +201,23 @@ namespace CompositeImageGPU
             }
             return REGION_BULK;
          }
-         if (geom.hasSL)
+         if (geom.hasSL) {
+            if (geom.hasSLP && geom.anyExposedFootprint) {
+               // Laterally over an exposed sphere's footprint disc the layer is
+               // the override band [-slThickP, 0); the footprint test is the
+               // sphere's z=0 cross-section, via the existing uniform grid.
+               Vec3 pf = { p.x, p.y, 0.0 };
+               int s = sphereIndexAt(pf, geom);
+               if (s >= 0) {
+                  if (p.z >= -geom.slThickP) {
+                     if (sphereIdxOut) *sphereIdxOut = s;
+                     return REGION_SLP;
+                  }
+                  return REGION_VAC;
+               }
+            }
             return (p.z >= -geom.slThick) ? REGION_SL : REGION_VAC;
+         }
          return REGION_VAC;
       }
 
@@ -346,6 +362,55 @@ namespace CompositeImageGPU
          return res;
       }
 
+      // Earliest crossing of the vertical cylinder standing on sphere sp's z=0
+      // footprint circle (radius sqrt(r^2 - z_c^2)), restricted to the surface-
+      // layer band z in [zLo, 0). Both quadratic roots are boundary candidates.
+      __device__ double cylinderT(Vec3 p0, Vec3 p1, const SphereGPU& sp, double zLo)
+      {
+         double w2 = sp.r * sp.r - sp.z * sp.z;
+         if (w2 <= 0.0) return INFINITY;          // buried sphere: no footprint
+         double dx = p1.x - p0.x, dy = p1.y - p0.y;
+         double a = dx * dx + dy * dy;
+         if (a == 0.0) return INFINITY;           // vertical segment: no wall crossing
+         double mx = p0.x - sp.x, my = p0.y - sp.y;
+         double b = 2.0 * (mx * dx + my * dy);
+         double cc = mx * mx + my * my - w2;
+         double disc = b * b - 4.0 * a * cc;
+         if (disc < 0.0) return INFINITY;
+         double root = sqrt(disc);
+         double dz = p1.z - p0.z;
+         double res = INFINITY;
+         double roots[2] = { (-b - root) / (2.0 * a), (-b + root) / (2.0 * a) };
+         for (int i = 0; i < 2; ++i) {
+            double t = roots[i];
+            if (t > 0.0 && t <= 1.0 && t < res) {
+               double z = p0.z + t * dz;
+               if (z >= zLo && z < 0.0)
+                  res = t;
+            }
+         }
+         return res;
+      }
+
+      // Earliest footprint-wall crossing over all exposed spheres. Only steps
+      // inside the thin z<0 layer band query this, and study decks carry few
+      // exposed spheres, so a linear scan is fine.
+      __device__ double footprintWallT(Vec3 p0, Vec3 p1, const GeomGPU& geom, int* wallSphereOut)
+      {
+         double best = INFINITY;
+         if (!geom.anyExposedFootprint)
+            return best;
+         double zLo = -fmax(geom.slThick, geom.slThickP);
+         for (int s = 0; s < geom.nSpheres; ++s) {
+            double t = cylinderT(p0, p1, geom.spheres[s], zLo);
+            if (t < best) {
+               best = t;
+               if (wallSphereOut) *wallSphereOut = s;
+            }
+         }
+         return best;
+      }
+
       __device__ void considerHit(BoundaryHit& best, double t, int nextRegion, Vec3 normal)
       {
          if (t > 0.0 && t <= 1.0 && t < best.t) {
@@ -363,6 +428,33 @@ namespace CompositeImageGPU
          return regionAt(add(hit, mul(CM_GPU_SMALL_DISP, dir)), geom);
       }
 
+      // Footprint-wall boundary candidate (per-precipitate layer override):
+      // the vertical interface between the base layer / vacuum and the
+      // override band on an exposed sphere's footprint circle. The normal is
+      // radial in xy, oriented along the direction of travel.
+      __device__ void considerFootprintWall(BoundaryHit& best, int region, Vec3 p0, Vec3 p1,
+                                            const GeomGPU& geom, Vec3 dir)
+      {
+         if (!geom.hasSLP || !geom.anyExposedFootprint)
+            return;
+         int ws = -1;
+         double tw = footprintWallT(p0, p1, geom, &ws);
+         if (!(tw < INFINITY) || ws < 0)
+            return;
+         int nr = regionJustPast(p0, p1, tw, dir, geom);
+         if (nr == region)
+            return;   // phantom crossing (e.g. wall band where both sides match)
+         Vec3 hitp = add(p0, mul(tw, sub(p1, p0)));
+         const SphereGPU& sp = geom.spheres[ws];
+         Vec3 n = { hitp.x - sp.x, hitp.y - sp.y, 0.0 };
+         double nn = sqrt(n.x * n.x + n.y * n.y);
+         if (nn <= 0.0)
+            return;
+         n.x /= nn; n.y /= nn;
+         if (dot(dir, n) < 0.0) { n.x = -n.x; n.y = -n.y; }
+         considerHit(best, tw, nr, n);
+      }
+
       __device__ BoundaryHit findBoundary(int region, Vec3 p0, Vec3 p1, const GeomGPU& geom,
                                           Vec3 dir, int sphereIdx)
       {
@@ -375,7 +467,16 @@ namespace CompositeImageGPU
          if (region == REGION_VAC) {
             if (geom.hasSL) {
                double t = planeT(p0, p1, -geom.slThick);
-               considerHit(best, t, regionJustPast(p0, p1, t, dir, geom), { 0.0, 0.0, 1.0 });
+               int nr = regionJustPast(p0, p1, t, dir, geom);
+               if (nr != region)
+                  considerHit(best, t, nr, { 0.0, 0.0, 1.0 });
+               if (geom.hasSLP && geom.slThickP != geom.slThick) {
+                  double t2 = planeT(p0, p1, -geom.slThickP);
+                  int nr2 = regionJustPast(p0, p1, t2, dir, geom);
+                  if (nr2 != region)
+                     considerHit(best, t2, nr2, { 0.0, 0.0, 1.0 });
+               }
+               considerFootprintWall(best, region, p0, p1, geom, dir);
             }
             else {
                double t = planeT(p0, p1, 0.0);
@@ -387,9 +488,22 @@ namespace CompositeImageGPU
             considerHit(best, planeT(p0, p1, -geom.slThick), REGION_VAC, { 0.0, 0.0, -1.0 });
             double t = planeT(p0, p1, 0.0);
             considerHit(best, t, regionJustPast(p0, p1, t, dir, geom), { 0.0, 0.0, 1.0 });
+            considerFootprintWall(best, region, p0, p1, geom, dir);
+         }
+         else if (region == REGION_SLP) {
+            considerHit(best, planeT(p0, p1, -geom.slThickP), REGION_VAC, { 0.0, 0.0, -1.0 });
+            double t = planeT(p0, p1, 0.0);
+            considerHit(best, t, regionJustPast(p0, p1, t, dir, geom), { 0.0, 0.0, 1.0 });
+            considerFootprintWall(best, region, p0, p1, geom, dir);
          }
          else if (region == REGION_BULK) {
-            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
+            if (geom.hasSLP) {
+               double t = planeT(p0, p1, 0.0);
+               considerHit(best, t, regionJustPast(p0, p1, t, dir, geom), { 0.0, 0.0, -1.0 });
+            }
+            else {
+               considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
+            }
             double ts = sphereEntryT(p0, p1, geom);
             if (ts < INFINITY)
                considerHit(best, ts, REGION_PRECIP, dir);
@@ -407,7 +521,13 @@ namespace CompositeImageGPU
             // component (cos^2(alpha) * kE), instead of the earlier dir-normal which
             // forced cosalpha=1 and let an exposed precipitate face over-transmit SEs.
             // CPU ExpQMBarrierSM is updated to match this in the parity step.
-            considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
+            if (geom.hasSLP) {
+               double t = planeT(p0, p1, 0.0);
+               considerHit(best, t, regionJustPast(p0, p1, t, dir, geom), { 0.0, 0.0, -1.0 });
+            }
+            else {
+               considerHit(best, planeT(p0, p1, 0.0), geom.hasSL ? REGION_SL : REGION_VAC, { 0.0, 0.0, -1.0 });
+            }
             considerHit(best, chamberT(p0, p1), REGION_NONE, dir);
          }
 
@@ -937,7 +1057,7 @@ namespace CompositeImageGPU
 
       const size_t nSpheres = cfg.spheres.size();
       bool ok = true;
-      ok = ok && checkCuda(cudaMalloc((void**)&dMats, sizeof(MatGPU) * 4), "cudaMalloc mats");
+      ok = ok && checkCuda(cudaMalloc((void**)&dMats, sizeof(MatGPU) * N_GPU_MATS), "cudaMalloc mats");
       ok = ok && checkCuda(cudaMalloc((void**)&dElems, sizeof(ElemTableGPU) * cfg.elems.size()), "cudaMalloc elems");
       if (ok && nSpheres > 0) {
          ok = ok && checkCuda(cudaMalloc((void**)&dSpheres, sizeof(SphereGPU) * nSpheres), "cudaMalloc spheres");
@@ -961,7 +1081,7 @@ namespace CompositeImageGPU
          ok = ok && checkCuda(cudaMalloc((void**)&dRadial, sizeof(int) * radialLen), "cudaMalloc radialHist");
 
       if (ok) {
-         ok = ok && checkCuda(cudaMemcpy(dMats, cfg.mats, sizeof(MatGPU) * 4, cudaMemcpyHostToDevice), "copy mats");
+         ok = ok && checkCuda(cudaMemcpy(dMats, cfg.mats, sizeof(MatGPU) * N_GPU_MATS, cudaMemcpyHostToDevice), "copy mats");
          ok = ok && checkCuda(cudaMemcpy(dElems, cfg.elems.data(), sizeof(ElemTableGPU) * cfg.elems.size(), cudaMemcpyHostToDevice), "copy elems");
          if (nSpheres > 0) {
             ok = ok && checkCuda(cudaMemcpy(dSpheres, cfg.spheres.data(), sizeof(SphereGPU) * nSpheres, cudaMemcpyHostToDevice), "copy spheres");

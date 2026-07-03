@@ -218,6 +218,8 @@ CudaMONSEL/CudaMONSEL/test_minimal.csv
 CudaMONSEL/CudaMONSEL/test_omp.csv
 CudaMONSEL/CudaMONSEL/test_multisphere_*.csv
 CudaMONSEL/CudaMONSEL/tile_*.csv
+CudaMONSEL/CudaMONSEL/test_slp_*.csv
+CudaMONSEL/CudaMONSEL/test_slp_*_eahist.*
 
 # Composite-image session outputs (regenerable; the .json input decks are kept)
 CudaMONSEL/CudaMONSEL/image_*.csv
