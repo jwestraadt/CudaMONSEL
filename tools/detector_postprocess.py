@@ -8,6 +8,12 @@ detector-channel images WITHOUT re-running the Monte Carlo.
 
 Usage:
     python detector_postprocess.py <hist>.json [--csv <run>.csv] [--out-prefix PFX]
+        [--window NAME:EMIN:EMAX:BMIN:BMAX ...] [--type {all,se1,se2,other}]
+
+--window replaces the built-in presets with custom acceptance boxes
+(energies in eV, beta in deg; repeatable). --type restricts the electron
+type axis of the v2 histogram (SE1 = true secondaries from the primary,
+SE2 = BSE-induced secondaries, other = backscattered primaries).
 
 beta = take-off polar angle from the outward optic axis (-z):
     beta = 0 deg  -> straight up the column (in-lens)
@@ -21,7 +27,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
 
-def load_histogram(json_path):
+def load_histogram(json_path, type_sel="all"):
     with open(json_path) as f:
         meta = json.load(f)
     bin_path = meta["bin_file"]
@@ -35,11 +41,32 @@ def load_histogram(json_path):
     if data.size != expected:
         raise ValueError("bin size %d != expected %d" % (data.size, expected))
     if nT > 1:
-        # Detector signals are type-agnostic, so sum over the type axis.
-        hist = data.reshape(ny, nx, nT, nE, nB).sum(axis=2)
+        typed = data.reshape(ny, nx, nT, nE, nB)
+        if type_sel == "all":
+            # Physical detectors are type-agnostic: sum over the type axis.
+            hist = typed.sum(axis=2)
+        else:
+            order = [t.lower() for t in meta.get("type_order", ["SE1", "SE2", "other"])]
+            if type_sel not in order:
+                raise ValueError("type %r not in histogram type_order %s" % (type_sel, order))
+            hist = typed[:, :, order.index(type_sel)]
     else:
+        if type_sel != "all":
+            raise ValueError("--type needs a v2 histogram with a type axis")
         hist = data.reshape(ny, nx, nE, nB)      # [row][col][energy_bin][angle_bin]
     return meta, hist
+
+
+def parse_window(spec, Emax):
+    """NAME:EMIN:EMAX:BMIN:BMAX -> (name, (e_lo, e_hi), (b_lo, b_hi))."""
+    parts = spec.split(":")
+    if len(parts) != 5:
+        raise ValueError("--window expects NAME:EMIN:EMAX:BMIN:BMAX, got %r" % spec)
+    name = parts[0]
+    e_lo, e_hi, b_lo, b_hi = (float(p) for p in parts[1:])
+    if e_hi <= e_lo or b_hi <= b_lo:
+        raise ValueError("--window %r: degenerate window" % spec)
+    return name, (e_lo, min(e_hi, Emax + 1.0)), (b_lo, b_hi)
 
 
 def bin_centers(meta):
@@ -89,9 +116,13 @@ def main():
     ap.add_argument("hist_json")
     ap.add_argument("--csv", default=None, help="run CSV for full-acceptance validation")
     ap.add_argument("--out-prefix", default=None)
+    ap.add_argument("--window", action="append", default=None, metavar="NAME:EMIN:EMAX:BMIN:BMAX",
+                    help="custom acceptance box (eV, deg); repeatable; replaces presets")
+    ap.add_argument("--type", choices=["all", "se1", "se2", "other"], default="all",
+                    help="restrict the electron-type axis (v2 histograms)")
     args = ap.parse_args()
 
-    meta, hist = load_histogram(args.hist_json)
+    meta, hist = load_histogram(args.hist_json, type_sel=args.type)
     traj = meta["trajectories_per_pixel"]
     se_thresh = meta["se_threshold_ev"]
     Emax = meta["energy_max_ev"]
@@ -104,6 +135,10 @@ def main():
     bse_recon = signal_map(hist, bse_full, traj)
     print("Histogram: %dx%d px, %d energy bins x %d angle bins, %d traj/px"
           % (meta["nx"], meta["ny"], meta["energy_bins"], meta["angle_bins"], traj))
+    if args.type != "all" and args.csv:
+        print("(--type %s: skipping CSV validation, type-filtered signals "
+              "cannot match the type-summed CSV yields)" % args.type)
+        args.csv = None
     if args.csv and os.path.exists(args.csv):
         rows = list(csv.DictReader(open(args.csv, newline="")))
         nx = meta["nx"]
@@ -117,13 +152,16 @@ def main():
         print("  BSE max|diff| = %.3e   mean|diff| = %.3e" %
               (np.abs(bse_recon - bse_csv).max(), np.abs(bse_recon - bse_csv).mean()))
 
-    # ---- Detector presets (energy_eV window, beta_deg window) ----
-    annular_lo, annular_hi = wd_ring_to_beta(5.0, 3.0, 8.0)   # WD 5 mm, r 3-8 mm
-    detectors = [
-        ("T3 in-lens SE",  (0.0, se_thresh),       (0.0, 15.0)),
-        ("Annular BSE",    (se_thresh, Emax + 1.0), (annular_lo, annular_hi)),
-        ("Chamber ETD SE", (0.0, se_thresh),        (30.0, 70.0)),
-    ]
+    # ---- Detector windows: custom --window boxes, else the presets ----
+    if args.window:
+        detectors = [parse_window(w, Emax) for w in args.window]
+    else:
+        annular_lo, annular_hi = wd_ring_to_beta(5.0, 3.0, 8.0)   # WD 5 mm, r 3-8 mm
+        detectors = [
+            ("T3 in-lens SE",  (0.0, se_thresh),       (0.0, 15.0)),
+            ("Annular BSE",    (se_thresh, Emax + 1.0), (annular_lo, annular_hi)),
+            ("Chamber ETD SE", (0.0, se_thresh),        (30.0, 70.0)),
+        ]
 
     print("\nDetector channels (core r<15nm vs matrix r>60nm):")
     print("  %-16s %-22s %10s %10s %9s" % ("detector", "window", "core", "matrix", "contrast"))
@@ -141,7 +179,7 @@ def main():
     ext = [-hw, hw, -hw, hw]
     precip_r = None  # draw a guide circle if center looks like a precipitate scan
     fig, axes = plt.subplots(1, len(maps), figsize=(5 * len(maps), 4.6))
-    for ax, (name, m, rel) in zip(axes, maps):
+    for ax, (name, m, rel) in zip(np.atleast_1d(axes), maps):
         im = ax.imshow(m, origin="upper", extent=ext, cmap="inferno")
         ax.add_patch(Circle((meta.get("center_x_nm", 0.0), meta.get("center_y_nm", 0.0)),
                             30.0, fill=False, edgecolor="cyan", lw=1.0, ls="--"))

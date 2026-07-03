@@ -607,11 +607,17 @@ def read_image(base):
     if not os.path.exists(p):
         return None
     xs, ys, cols = [], [], {"SE": [], "SE1": [], "SE2": [], "BSE": [], "total": []}
+    det_cols = {}
     with open(p, newline="") as f:
-        for r in csv.DictReader(f):
+        rd = csv.DictReader(f)
+        det_names = [n for n in (rd.fieldnames or []) if n.startswith("det_")]
+        det_cols = {n: [] for n in det_names}
+        for r in rd:
             xs.append(float(r["x_nm"])); ys.append(float(r["y_nm"]))
             for k in cols:
                 cols[k].append(float(r["%s_yield" % k]))
+            for n in det_names:
+                det_cols[n].append(float(r[n]))
     if not xs:
         return None
     ux, uy = sorted(set(xs)), sorted(set(ys))
@@ -620,6 +626,7 @@ def read_image(base):
         return None
     hw = max(abs(min(ux)), abs(max(ux)), abs(min(uy)), abs(max(uy)))
     grids = {k: np.array(v).reshape(ny, nx) for k, v in cols.items()}
+    grids.update({k: np.array(v).reshape(ny, nx) for k, v in det_cols.items()})
     return {"grids": grids, "hw": hw, "nx": nx, "ny": ny}
 
 
@@ -711,6 +718,117 @@ def plot_inversion_demo(prefix, etok, carbons, out_png, geom, core_r=20.0, mtx_r
     print("wrote %s  (total contrast %+.1f%% -> %+.1f%%)" % (out_png, tot_c[0], tot_c[-1]))
 
 
+def first_zero_crossing(xs, ys):
+    """Linear-interpolated x of the first sign change in ys, or None."""
+    for i in range(1, len(xs)):
+        a, b = ys[i - 1], ys[i]
+        if np.isfinite(a) and np.isfinite(b) and a * b < 0:
+            return xs[i - 1] + (xs[i] - xs[i - 1]) * a / (a - b)
+    return None
+
+
+def plot_detector_inversion(prefix, etok, carbons, out_png, geom, channels=None,
+                            core_r=20.0, mtx_r=45.0, images=False):
+    """Detector-channel contrast-vs-carbon curves (one per det_* CSV column,
+    ideal total_yield as black reference); each channel's bright->dark zero
+    crossing is annotated in the legend and marked. With images=True, also
+    writes a channel(row) x carbon(col) image-grid figure."""
+    imgs = [read_image("%s_%s_c%s" % (prefix, etok, c)) for c in carbons]
+    if not any(imgs):
+        print("  (no image data for %s_%s)" % (prefix, etok)); return
+    cx = geom["cx"] if geom else 0.0
+    cy = geom.get("cy", 0.0) if geom else 0.0
+    R = geom["radius"] if geom else 30.0
+    first = next(im for im in imgs if im)
+    found = [k for k in first["grids"] if k.startswith("det_")]
+    if channels:
+        want = [c if c.startswith("det_") else "det_" + c for c in channels]
+        chans = [c for c in want if c in found]
+    else:
+        chans = found
+    if not chans:
+        print("  (no det_* channels in %s_%s CSVs)" % (prefix, etok)); return
+    xs = [carbon_nm(c) for c in carbons]
+
+    def contrast_series(key):
+        out = []
+        for im in imgs:
+            if im is None or key not in im["grids"]:
+                out.append(np.nan); continue
+            out.append(region_contrast(im["grids"][key], im["hw"], cx, cy, core_r, mtx_r)[2])
+        return out
+
+    palette = ["#e08a3c", "#2e8b3d", "#7b52ab", "#c0392b", "#2471a3", "#7f8c52"]
+    fig, axc = plt.subplots(figsize=(9.5, 7))
+    tot_c = contrast_series("total")
+    allvals = list(tot_c)
+    curves = []
+    for i, ch in enumerate(chans):
+        yc = contrast_series(ch)
+        allvals += yc
+        curves.append((ch, yc, palette[i % len(palette)]))
+    ymax = float(np.nanmax(np.abs(np.array(allvals, dtype=float)))) * 1.15
+    if not np.isfinite(ymax) or ymax <= 0:
+        ymax = 1.0
+    axc.set_ylim(-ymax, ymax)
+    axc.axhspan(0, ymax, color="#e8f5e9", zorder=0)
+    axc.axhspan(-ymax, 0, color="#fde8e8", zorder=0)
+    axc.axhline(0, color="0.4", lw=1)
+    xc = first_zero_crossing(xs, tot_c)
+    lab = "total_yield (ideal)" + (" | inv %.2f nm" % xc if xc is not None else "")
+    axc.plot(xs, tot_c, "-^", color="black", lw=2.4, label=lab)
+    markers = "osdvP*"
+    for i, (ch, yc, col) in enumerate(curves):
+        xcc = first_zero_crossing(xs, yc)
+        lab = ch[4:] + (" | inv %.2f nm" % xcc if xcc is not None else "")
+        axc.plot(xs, yc, "-" + markers[i % len(markers)], color=col, lw=2, label=lab)
+        if xcc is not None:
+            axc.axvline(xcc, color=col, ls="--", lw=1.1, alpha=0.65)
+    axc.text(0.98, 0.96, "γ′ BRIGHT", color="#2e8b3d", fontsize=11, ha="right",
+             va="top", transform=axc.transAxes)
+    axc.text(0.98, 0.04, "γ′ DARK", color="#c0392b", fontsize=11, ha="right",
+             va="bottom", transform=axc.transAxes)
+    axc.set_xlabel("carbon thickness (nm)")
+    axc.set_ylabel("precip core vs matrix contrast (%)")
+    axc.set_title("Detector-channel γ′ contrast vs carbon @ %s\n"
+                  "(energy/angle windows, β = π − θ; 0° = up the column)"
+                  % pretty_energy(etok), fontsize=12)
+    axc.legend(loc="upper right", fontsize=9)
+    axc.grid(True, ls=":", alpha=0.4)
+    fig.savefig(out_png, dpi=140, bbox_inches="tight")
+    plt.close(fig)
+    ends = ", ".join("%s %+.1f%%" % (ch[4:], yc[-1]) for ch, yc, _ in curves)
+    print("wrote %s  (end contrast: %s)" % (out_png, ends))
+
+    if images:
+        from matplotlib.patches import Circle
+        nrows, ncols = len(chans), len(carbons)
+        fig = plt.figure(figsize=(2.6 * ncols, 2.8 * nrows))
+        gs = fig.add_gridspec(nrows, ncols, wspace=0.08, hspace=0.22)
+        for ri, ch in enumerate(chans):
+            gmax = max((np.nanpercentile(im["grids"][ch], 99)
+                        for im in imgs if im and ch in im["grids"]), default=1.0)
+            for ci, (c, im) in enumerate(zip(carbons, imgs)):
+                ax = fig.add_subplot(gs[ri, ci])
+                if im is None or ch not in im["grids"]:
+                    ax.set_axis_off(); continue
+                hw = im["hw"]
+                ax.imshow(im["grids"][ch], origin="upper", extent=[-hw, hw, -hw, hw],
+                          cmap="gray", vmin=0.0, vmax=gmax)
+                ax.add_patch(Circle((cx, cy), R, fill=False, ec="cyan", ls="--", lw=0.9))
+                ax.set_xticks([]); ax.set_yticks([])
+                if ri == 0:
+                    ax.set_title("C %.1f nm" % carbon_nm(c), fontsize=9)
+                if ci == 0:
+                    ax.set_ylabel(ch[4:], fontsize=9)
+        fig.suptitle("Detector-channel images @ %s (rows = channel, cols = carbon)"
+                     % pretty_energy(etok), fontsize=12, fontweight="bold")
+        img_png = out_png.replace(".png", "_images.png")
+        fig.savefig(img_png, dpi=140, bbox_inches="tight")
+        plt.close(fig)
+        print("wrote %s" % img_png)
+
+
 def plot_psf3d_matrix(prefix, energies, carbons, out_png, suptitle, rmax, nbins, floor,
                       traj, elev, azim, logz=True):
     """Grid of escape-density PSF surfaces: rows = energy, cols = carbon thickness.
@@ -776,6 +894,12 @@ def main():
     ap.add_argument("--inversion", action="store_true",
                     help="image_denseP-style total-signal inversion demo per energy (needs GPU image CSVs)")
     ap.add_argument("--img-prefix", default="image_gpc", help="raster-image base prefix for --inversion")
+    ap.add_argument("--det-inversion", action="store_true",
+                    help="detector-channel contrast-vs-carbon curves from det_* CSV columns")
+    ap.add_argument("--channels", nargs="+", default=None,
+                    help="det_* channel names for --det-inversion (default: all found)")
+    ap.add_argument("--det-images", action="store_true",
+                    help="also write the channel x carbon image grid for --det-inversion")
     ap.add_argument("--labels", nargs="*", default=None, help="per-base titles (grid or single)")
     ap.add_argument("--title", default=None, help="single-figure title / grid suptitle")
     ap.add_argument("--out-prefix", default=None)
@@ -791,7 +915,7 @@ def main():
     ap.add_argument("--azim", type=float, default=-60.0)
     args = ap.parse_args()
 
-    if args.carbon_matrix or args.inversion:
+    if args.carbon_matrix or args.inversion or args.det_inversion:
         if args.carbon_matrix:
             out = args.out_prefix or args.prefix
             plot_carbon_matrix(args.prefix, args.energies, args.carbons, out + "_matrix.png",
@@ -816,6 +940,12 @@ def main():
                 geom = read_geometry("%s_%s" % (args.img_prefix, etok))
                 plot_inversion_demo(args.img_prefix, etok, args.carbons,
                                     "%s_%s_inversion.png" % (args.img_prefix, etok), geom)
+        if args.det_inversion:
+            for etok in args.energies:
+                geom = read_geometry("%s_%s" % (args.img_prefix, etok))
+                plot_detector_inversion(args.img_prefix, etok, args.carbons,
+                                        "%s_%s_det_inversion.png" % (args.img_prefix, etok),
+                                        geom, channels=args.channels, images=args.det_images)
         return
 
     if not args.bases:
