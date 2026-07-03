@@ -66,12 +66,29 @@ namespace CompositeImageGPU
    };
 
    // -----------------------------------------------------------------------
-   // Geometry
+   // Geometry: one or more precipitate spheres in the bulk half-space, with a
+   // uniform-grid acceleration structure (CSR cell lists). Spheres never
+   // intersect (asserted at parse time), so a precipitate region is exited
+   // only through its own sphere surface. Each sphere is registered in every
+   // grid cell its AABB overlaps, so the cell size is free to follow the
+   // median radius even when radii span decades.
    // -----------------------------------------------------------------------
+   struct SphereGPU
+   {
+      double x, y, z, r;                     // center (m) + radius (m)
+   };
+
    struct GeomGPU
    {
-      double precipCx, precipCy, precipCz;   // m
-      double precipR2, precipR;              // m^2, m
+      const SphereGPU* spheres;              // device array, nullptr if none
+      int    nSpheres;
+      bool   spheresAreVoid;                 // all spheres vacuum (etched-out)
+      // Uniform grid over the sphere-populated AABB.
+      double gridOx, gridOy, gridOz;         // grid origin (m)
+      double cellInv;                        // 1 / cell edge (m^-1)
+      int    ncx, ncy, ncz;
+      const int* cellStart;                  // device, [ncx*ncy*ncz + 1]
+      const int* cellItems;                  // device, sphere indices
       double slThick;                        // m (0 if no SL)
       bool   hasSL;
    };
@@ -102,7 +119,12 @@ namespace CompositeImageGPU
       // Materials (indices match region IDs: 0=vacuum,1=SL,2=bulk,3=precip)
       MatGPU      mats[4];
       std::vector<ElemTableGPU> elems;       // all unique elements
-      GeomGPU     geom;
+      GeomGPU     geom;                      // device pointers patched by run()
+
+      // Host-side geometry tables; run() uploads them and patches geom.
+      std::vector<SphereGPU> spheres;
+      std::vector<int> cellStart;            // CSR offsets, ncx*ncy*ncz + 1
+      std::vector<int> cellItems;            // sphere indices per cell
 
       // Pixel scan grid
       int    nx, ny;
