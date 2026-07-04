@@ -1053,7 +1053,8 @@ namespace CompositeImage
       std::vector<CompositeImageGPU::ElemTableGPU>& elems)
    {
       if ((int)phase.elements.size() > CompositeImageGPU::MAX_MAT_ELEM)
-         throw std::runtime_error("composite_image GPU supports at most 8 elements per material: " + phase.name);
+         throw std::runtime_error("composite_image GPU supports at most "
+            + std::to_string(CompositeImageGPU::MAX_MAT_ELEM) + " elements per material: " + phase.name);
 
       CompositeImageGPU::MatGPU mat;
       std::memset(&mat, 0, sizeof(mat));

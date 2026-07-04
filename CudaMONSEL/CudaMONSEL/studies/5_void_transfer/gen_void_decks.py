@@ -16,7 +16,7 @@ import json, os
 OUT = "studies/5_void_transfer"
 DATA = OUT + "/data"
 
-RENE104 = {  # at% (nominal wt% -> at%), <=8 elements for the GPU backend
+RENE104 = {  # at% (nominal wt% -> at%), <=12 elements for the GPU backend (MAX_MAT_ELEM)
     "name": "Rene104", "density_kg_m3": 8250.0,
     "work_function_ev": 4.8, "fermi_energy_ev": 8.0, "bandgap_ev": 0.0,
     "secondary_generation_energy_ev": 30.0, "break_energy_ev": 45.0,

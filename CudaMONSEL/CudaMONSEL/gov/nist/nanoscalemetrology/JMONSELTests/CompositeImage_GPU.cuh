@@ -34,7 +34,7 @@ namespace CompositeImageGPU
    // Per-material data (5 slots: 0=vacuum, 1=SL, 2=bulk, 3=precipitate,
    // 4=SL over precipitate footprints — vacuum unless precipitate_override)
    // -----------------------------------------------------------------------
-   static const int MAX_MAT_ELEM = 8;
+   static const int MAX_MAT_ELEM = 12;
    static const int N_GPU_MATS   = 5;
 
    struct MatGPU
